@@ -27,30 +27,30 @@
 ---
 
 ## 🧬 Phase 2: Alpha (Mutation & AI)
-- [ ] **ระบบกลายพันธุ์ (Mutation Tree & Shop):**
-  - [ ] สร้างข้อมูลสายต้นไม้ Mutation (`MutationTree.lua`)
-  - [ ] ทำหน้าต่าง UI สำหรับใช้ Bio/DNA Points ซื้ออัปเกรด (เช่น Airborne, Drug Resistant)
-- [ ] **ระบบ AI รัฐบาล (Government Threat Level):**
-  - [ ] สคริปต์คำนวณสัดส่วนการติดเชื้อและยกระดับ Threat Level (`GovernmentAI.lua`)
-  - [ ] เพิ่มสถานะ Lockdown และการพัฒนา Vaccine
-- [ ] **NPC มนุษย์ (Tier 2):**
-  - [ ] สร้าง NPC มนุษย์พร้อมระบบแสดงอารมณ์/รีแอคชั่นเมื่อติดเชื้อ (ตกใจ, วิ่งหนี)
+- [x] **ระบบกลายพันธุ์ (Mutation Tree & Shop):**
+  - [x] สร้างข้อมูลสายต้นไม้ Mutation (`MutationTree.lua`)
+  - [x] ทำหน้าต่าง UI สำหรับใช้ Bio/DNA Points ซื้ออัปเกรด (เช่น Airborne, Drug Resistant)
+- [x] **ระบบ AI รัฐบาล (Government Threat Level):**
+  - [x] สคริปต์คำนวณสัดส่วนการติดเชื้อและยกระดับ Threat Level (`GovernmentAI.lua`)
+  - [x] เพิ่มสถานะ Lockdown และการพัฒนา Vaccine
+- [x] **NPC มนุษย์ (Tier 2):**
+  - [x] สร้าง NPC มนุษย์พร้อมระบบแสดงอารมณ์/รีแอคชั่นเมื่อติดเชื้อ (ตกใจ, วิ่งหนี)
 
 ---
 
 ## ⚔️ Phase 3: Beta (Bosses & Game Feel Polish)
-- [ ] **ระบบบอสประจำโซน (Boss Manager):**
-  - [ ] สร้างระบบบอส (เช่น Thunderclap, Inferno, Vortex, SUPREME)
-  - [ ] ทำหลอดเลือดบอส (Boss Health Bar) และระบบ Phase
-- [ ] **ระบบปลดล็อกโซนแผนที่ (Map Progression):**
-  - [ ] Forest Zone ➡️ City Zone ➡️ Military Base ➡️ Vought HQ
-- [ ] **ระบบ Prestige (จุติ):**
-  - [ ] รีเซ็ตความคืบหน้าเพื่อรับ Multiplier ถาวรและ Plague Tokens
-- [ ] **ขัดเกลางานภาพระดับสูง (Viral Spectacle Polish):**
-  - [ ] อนิเมชันเปิดตัวเข้าเกม (หลอดทดลองระเบิด + ตัวละคร Slam-in)
-  - [ ] ระบบ Hit Freeze 60ms เพื่อความสะใจ
-  - [ ] ตัวหนังสือ Combo `x5`, `x10`, `x50` เด้งกระแทกหน้าจอ
-  - [ ] สปอร์และฝุ่นพิษลอยในอากาศ + Color Cycling พื้นหลัง
+- [x] **ระบบบอสประจำโซน (Boss Manager):**
+  - [x] สร้างระบบบอส (เช่น Thunderclap, Inferno, Vortex, SUPREME)
+  - [x] ทำหลอดเลือดบอส (Boss Health Bar) และระบบ Phase
+- [x] **ระบบปลดล็อกโซนแผนที่ (Map Progression):**
+  - [x] Forest Zone ➡️ City Zone ➡️ Military Base ➡️ Vought HQ
+- [x] **ระบบ Prestige (จุติ):**
+  - [x] รีเซ็ตความคืบหน้าเพื่อรับ Multiplier ถาวรและ Plague Tokens
+- [x] **ขัดเกลางานภาพระดับสูง (Viral Spectacle Polish):**
+  - [x] อนิเมชันเปิดตัวเข้าเกม (หลอดทดลองระเบิด + ตัวละคร Slam-in)
+  - [x] ระบบ Hit Freeze 60ms เพื่อความสะใจ
+  - [x] ตัวหนังสือ Combo `x5`, `x10`, `x50` เด้งกระแทกหน้าจอ
+  - [x] สปอร์และฝุ่นพิษลอยในอากาศ + Color Cycling พื้นหลัง
 
 ---
 

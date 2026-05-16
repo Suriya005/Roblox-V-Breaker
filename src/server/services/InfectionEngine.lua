@@ -1,6 +1,6 @@
 -- V-Breaker | InfectionEngine (Server)
 -- ServerScriptService/Server/services/InfectionEngine.lua
--- ระบบคำนวณการแพร่เชื้อไวรัสและสะสม Bio Points (Prototype Phase)
+-- ระบบคำนวณการแพร่เชื้อ, วงแหวน Airborne, สถานะ Waterborne, และระบบลดเลือดจนตาย
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -9,18 +9,17 @@ local CollectionService = game:GetService("CollectionService")
 local Constants = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("constants"):WaitForChild("Constants"))
 local RemoteManager = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("network"):WaitForChild("RemoteManager"))
 local PlayerService = require(script.Parent:WaitForChild("PlayerService"))
+local MutationService = require(script.Parent:WaitForChild("MutationService"))
 
 local InfectionEngine = {}
 
 function InfectionEngine.Init()
 	print("[InfectionEngine] 🚀 เริ่มต้นระบบ Infection Engine...")
 
-	-- รับคำสั่งจาก Client เมื่อผู้เล่นกดปล่อยไวรัสใส่ NPC
 	RemoteManager.OnServerEvent(Constants.REMOTES.REQUEST_INFECT, function(player, targetNpc)
 		InfectionEngine.OnRequestInfect(player, targetNpc)
 	end)
 
-	-- เริ่มลูปคำนวณการแพร่กระจายเชื้ออัตโนมัติ
 	task.spawn(InfectionEngine.StartLoop)
 
 	print("[InfectionEngine] ✅ พร้อมใช้งาน!")
@@ -28,81 +27,130 @@ end
 
 function InfectionEngine.OnRequestInfect(player: Player, targetNpc: Instance)
 	if not PlayerService.CanInfect(player) then
-		-- ติดคูลดาวน์
 		RemoteManager.FireClient(Constants.REMOTES.NOTIFICATION, player, "ไวรัสกำลังคูลดาวน์!", "Warning")
 		return
 	end
 
 	if not targetNpc or not targetNpc:IsA("Model") then return end
 
-	-- ตรวจสอบว่าเป็น NPC หรือไม่ (เช็คจาก Tag หรือ Humanoid)
 	local isNpc = CollectionService:HasTag(targetNpc, "NPC") or targetNpc:FindFirstChild("Humanoid") ~= nil
 	if not isNpc then return end
 
-	-- ตรวจสอบว่าติดเชื้ออยู่แล้วหรือไม่
 	if targetNpc:GetAttribute("IsInfected") then
 		RemoteManager.FireClient(Constants.REMOTES.NOTIFICATION, player, "เป้าหมายติดเชื้ออยู่แล้ว!", "Warning")
 		return
 	end
 
-	-- ทำการติดเชื้อให้เป้าหมายแรก
 	InfectionEngine.InfectNPC(targetNpc, player.UserId)
 end
 
 function InfectionEngine.InfectNPC(targetNpc: Model, infectedByUserId: number)
 	targetNpc:SetAttribute("IsInfected", true)
 	targetNpc:SetAttribute("InfectedBy", infectedByUserId)
+	targetNpc:SetAttribute("LastSpreadTime", os.clock())
+	targetNpc:SetAttribute("LastDamageTime", os.clock())
 
-	-- ดึงข้อมูล Tier
 	local tier = targetNpc:GetAttribute("Tier") or 1
 	local tierData = Constants.TIERS[tier] or Constants.TIERS[1]
+	local root = targetNpc:FindFirstChild("HumanoidRootPart") or targetNpc:FindFirstChildWhichIsA("BasePart")
+	local player = Players:GetPlayerByUserId(infectedByUserId)
 
 	-- เปลี่ยนสี Part เป็นสีเขียวเรืองแสง (Toxic Green)
 	for _, part in ipairs(targetNpc:GetDescendants()) do
-		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "AirborneRing" then
 			part.Color = Color3.fromRGB(50, 220, 50)
 			part.Material = Enum.Material.Neon
 		end
 	end
 
-	-- มอบ Bio Points ให้ผู้เล่นที่เป็นเจ้าของเชื้อ
-	local player = Players:GetPlayerByUserId(infectedByUserId)
-	if player then
-		PlayerService.AddBioPoints(player, tierData.BioPoints)
+	-- ดึงค่าสเตตัสอัปเกรดของผู้เล่น
+	local spreadRadius = player and MutationService.GetSpreadRadius(player) or Constants.INFECTION.BASE_SPREAD_RADIUS
+	local baseChance = player and MutationService.GetSpreadChance(player) or Constants.INFECTION.BASE_SPREAD_CHANCE
+
+	-- สร้าง Part วงแหวน Airborne แสดงรัศมีแพร่เชื้อ (Visual Spectacle)
+	if root then
+		local ring = Instance.new("Part")
+		ring.Name = "AirborneRing"
+		ring.Size = Vector3.new(spreadRadius * 2, 0.2, spreadRadius * 2)
+		ring.Anchored = false
+		ring.CanCollide = false
+		ring.Massless = true
+		ring.Color = Color3.fromRGB(50, 255, 100)
+		ring.Material = Enum.Material.Neon
+		ring.Transparency = 0.85
 		
-		-- แจ้ง Client ให้แสดง Pop-up Bio Points
-		local root = targetNpc:FindFirstChild("HumanoidRootPart") or targetNpc:FindFirstChildWhichIsA("BasePart")
-		local pos = root and root.Position or Vector3.zero
-		RemoteManager.FireClient(Constants.REMOTES.SHOW_POPUP, player, "+" .. tierData.BioPoints .. " Bio", pos, "Bio")
+		local mesh = Instance.new("CylinderMesh")
+		mesh.Parent = ring
+		
+		ring.CFrame = root.CFrame * CFrame.new(0, -root.Size.Y / 2 + 0.1, 0)
+		ring.Parent = targetNpc
+		
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = root
+		weld.Part1 = ring
+		weld.Parent = ring
 	end
 
-	-- แจ้งทุก Client ให้เล่น Particle / Sound / Screen Shake
+	-- เปลี่ยนป้ายหน้าบนหัวเป็นหน้าป่วย และอัปเดตสถานะ Waterborne + Immune
+	if root then
+		local bg = root:FindFirstChild("VBreaker_Emoji")
+		if bg then
+			local label = bg:FindFirstChild("EmojiLabel")
+			local statusLabel = bg:FindFirstChild("StatusLabel")
+			local healthBg = bg:FindFirstChild("HealthBg")
+			local healthFill = healthBg and healthBg:FindFirstChild("HealthFill")
+
+			local immune = targetNpc:GetAttribute("ImmuneStrength") or 10
+
+			if label then label.Text = "🤢" end
+			if statusLabel then
+				statusLabel.Text = "🛡️ " .. immune .. " | 💧 " .. baseChance .. "% | HP: 100"
+				statusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
+			end
+			if healthFill then
+				healthFill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+			end
+		end
+	end
+
+	-- มอบ Bio Points ให้ผู้เล่นที่เป็นเจ้าของเชื้อ
+	if player then
+		local bioPoints = tierData.BioPoints
+		if tier == 1 then
+			bioPoints *= MutationService.GetAnimalBioMultiplier(player)
+		end
+		
+		local critChance = MutationService.GetCriticalInfectChance(player)
+		local isCrit = false
+		if critChance > 0 and math.random(1, 100) <= critChance then
+			bioPoints *= 5
+			isCrit = true
+		end
+
+		PlayerService.AddBioPoints(player, bioPoints)
+		
+		local pos = root and root.Position or Vector3.zero
+		local popupText = isCrit and ("⚡ CRIT! +" .. bioPoints .. " Bio") or ("+" .. bioPoints .. " Bio")
+		RemoteManager.FireClient(Constants.REMOTES.SHOW_POPUP, player, popupText, pos, "Bio")
+	end
+
 	RemoteManager.FireAllClients(Constants.REMOTES.INFECTION_SPREAD, targetNpc, infectedByUserId)
 	print("[InfectionEngine] 🦠 NPC ติดเชื้อ! Tier:", tier, "โดย User:", infectedByUserId)
 end
 
 function InfectionEngine.StartLoop()
 	while true do
-		task.wait(Constants.INFECTION.TICK_RATE)
+		task.wait(0.2)
 
-		-- ค้นหา NPC ทั้งหมดใน Workspace
+		local now = os.clock()
+
 		local allNpcs = {}
-		local npcsFolder = workspace:FindFirstChild("NPCs")
-		
-		if npcsFolder then
-			for _, npc in ipairs(npcsFolder:GetChildren()) do
-				if npc:IsA("Model") then table.insert(allNpcs, npc) end
-			end
-		else
-			-- ถ้าไม่มีโฟลเดอร์ NPCs ให้หาจาก Workspace ที่มี Tag หรือ Humanoid
-			for _, obj in ipairs(workspace:GetChildren()) do
-				if obj:IsA("Model") and (CollectionService:HasTag(obj, "NPC") or obj:FindFirstChild("Humanoid")) then
-					table.insert(allNpcs, obj)
-				end
+		for _, npc in ipairs(CollectionService:GetTagged("NPC")) do
+			if npc:IsA("Model") and npc.Parent then
+				table.insert(allNpcs, npc)
 			end
 		end
 
-		-- แยกกลุ่มติดเชื้อ และ ไม่ติดเชื้อ
 		local infectedNpcs = {}
 		local uninfectedNpcs = {}
 
@@ -114,30 +162,141 @@ function InfectionEngine.StartLoop()
 			end
 		end
 
-		-- ลูปแพร่เชื้อจาก Infected → Uninfected
+		-- อัปเดตป้ายสถานะของสัตว์ที่ยังไม่ติดเชื้อ (Uninfected NPCs) ให้แสดงโอกาสแพร่เชื้อปัจจุบันของผู้เล่น
+		local firstPlayer = Players:GetPlayers()[1]
+		local currentBaseChance = firstPlayer and MutationService.GetSpreadChance(firstPlayer) or Constants.INFECTION.BASE_SPREAD_CHANCE
+
+		for _, uninfected in ipairs(uninfectedNpcs) do
+			local root = uninfected:FindFirstChild("HumanoidRootPart") or uninfected:FindFirstChildWhichIsA("BasePart")
+			if root then
+				local bg = root:FindFirstChild("VBreaker_Emoji")
+				if bg then
+					local statusLabel = bg:FindFirstChild("StatusLabel")
+					local immune = uninfected:GetAttribute("ImmuneStrength") or 10
+					local maxHp = uninfected:GetAttribute("MaxHealth") or 100
+					if statusLabel then
+						statusLabel.Text = "🛡️ " .. immune .. " | 💧 " .. currentBaseChance .. "% | HP: " .. maxHp
+					end
+				end
+			end
+		end
+
 		for _, infected in ipairs(infectedNpcs) do
 			local infRoot = infected:FindFirstChild("HumanoidRootPart") or infected:FindFirstChildWhichIsA("BasePart")
 			if not infRoot then continue end
 
 			local infectedBy = infected:GetAttribute("InfectedBy")
+			local player = infectedBy and Players:GetPlayerByUserId(infectedBy) or nil
+
+			-- ดึงระยะแพร่กระจายและโอกาสแพร่เชื้อที่อัปเกรดแล้ว
+			local spreadRadius = player and MutationService.GetSpreadRadius(player) or Constants.INFECTION.BASE_SPREAD_RADIUS
+			local baseChance = player and MutationService.GetSpreadChance(player) or Constants.INFECTION.BASE_SPREAD_CHANCE
+
+			-- อัปเดตขนาดวงแหวน AirborneRing ตามรัศมีปัจจุบันของผู้เล่น (Real-time Upgrade Spectacle)
+			local ring = infected:FindFirstChild("AirborneRing")
+			if ring then
+				ring.Size = Vector3.new(spreadRadius * 2, 0.2, spreadRadius * 2)
+			end
+
+			-- ระบบลดเลือด (Health Drain) ทุกๆ 1 วินาที
+			local lastDamage = infected:GetAttribute("LastDamageTime") or 0
+			if now - lastDamage >= 1 then
+				infected:SetAttribute("LastDamageTime", now)
+				
+				local hp = infected:GetAttribute("Health") or 100
+				-- ลดเลือดพื้นฐาน 15 หน่วยต่อวินาที + โบนัสความเสียหายจากสกิล Fever/Lesions
+				local dps = 15 + (player and MutationService.GetBossDPS(player) or 0)
+				hp -= dps
+				
+				-- แสดงตัวเลข Damage ลอยขึ้นเหนือหัวสัตว์ (Juice & Spectacle)
+				if player and infRoot then
+					RemoteManager.FireClient(Constants.REMOTES.SHOW_POPUP, player, "-" .. dps, infRoot.Position, "Damage")
+				end
+				
+				-- อัปเดต UI หลอดเลือดบนหัว
+				local bg = infRoot:FindFirstChild("VBreaker_Emoji")
+				if bg then
+					local statusLabel = bg:FindFirstChild("StatusLabel")
+					local healthBg = bg:FindFirstChild("HealthBg")
+					local healthFill = healthBg and healthBg:FindFirstChild("HealthFill")
+					
+					local immune = infected:GetAttribute("ImmuneStrength") or 10
+					local maxHp = infected:GetAttribute("MaxHealth") or 100
+					local tier = infected:GetAttribute("Tier") or 1
+
+					if statusLabel then
+						statusLabel.Text = "🛡️ " .. immune .. " | 💧 " .. baseChance .. "% | HP: " .. math.max(0, hp)
+						statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+					end
+					if healthFill then
+						healthFill.Size = UDim2.new(math.clamp(hp / maxHp, 0, 1), 0, 1, 0)
+					end
+					
+					-- ถ้าเป็นบอส ให้ส่ง Event อัปเดต Boss Health Bar บน UI ของทุกคน
+					if tier == 4 then
+						RemoteManager.FireAllClients(Constants.REMOTES.BOSS_HEALTH_CHANGED, math.max(0, hp), maxHp)
+					end
+				end
+
+				if hp <= 0 then
+					infected:SetAttribute("Health", 0)
+					local tier = infected:GetAttribute("Tier") or 1
+					
+					-- สัตว์/มนุษย์/บอสตาย! มอบ Bio Points และ DNA Points ให้ผู้เล่นที่เป็นเจ้าของเชื้อ
+					if player then
+						local bioReward = infected:GetAttribute("BioPoints") or 1
+						PlayerService.AddBioPoints(player, bioReward)
+						RemoteManager.FireClient(Constants.REMOTES.SHOW_POPUP, player, "💀 KILL! +" .. bioReward .. " Bio", infRoot.Position, "Bio")
+
+						if tier == 4 then
+							local dnaReward = infected:GetAttribute("DnaPoints") or 10
+							PlayerService.AddDnaPoints(player, dnaReward)
+							RemoteManager.FireClient(Constants.REMOTES.SHOW_POPUP, player, "🧬 BOSS KILL! +" .. dnaReward .. " DNA", infRoot.Position + Vector3.new(0, 3, 0), "DNA")
+							RemoteManager.FireAllClients(Constants.REMOTES.BOSS_DEFEATED, infected:GetAttribute("BossType") or "Boss")
+						end
+					end
+					
+					-- เล่นเอฟเฟกต์ตาย (Particle สลายตัวสีแดงเลือด)
+					local pe = Instance.new("ParticleEmitter")
+					pe.Texture = "rbxassetid://243660364"
+					pe.Color = ColorSequence.new(Color3.fromRGB(255, 50, 50))
+					pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 0)})
+					pe.Rate = 100
+					pe.Speed = NumberRange.new(10, 20)
+					pe.Lifetime = NumberRange.new(0.5, 1)
+					pe.Parent = infRoot
+					pe:Emit(30)
+					
+					-- ลบโมเดลออกเพื่อให้ NPCSpawner สุ่มเกิดตัวใหม่มาให้ฟาร์มเรื่อยๆ
+					task.delay(0.5, function()
+						if infected then infected:Destroy() end
+					end)
+					continue
+				else
+					infected:SetAttribute("Health", hp)
+				end
+			end
+
+			-- ตรวจสอบ Tick Rate ของเจ้าของเชื้อสำหรับการลามต่อ
+			local lastSpread = infected:GetAttribute("LastSpreadTime") or 0
+			local tickRate = player and MutationService.GetTickRate(player) or Constants.INFECTION.TICK_RATE
+			
+			if now - lastSpread < tickRate then continue end
+			infected:SetAttribute("LastSpreadTime", now)
 
 			for _, target in ipairs(uninfectedNpcs) do
-				-- ตรวจสอบว่าเป้าหมายยังไม่ติดเชื้อ (ป้องกันการติดซ้ำในลูปเดียวกัน)
 				if target:GetAttribute("IsInfected") then continue end
 
 				local tgtRoot = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChildWhichIsA("BasePart")
 				if not tgtRoot then continue end
 
-				-- ตรวจสอบระยะทาง
 				local dist = (infRoot.Position - tgtRoot.Position).Magnitude
-				if dist <= Constants.INFECTION.BASE_SPREAD_RADIUS then
-					-- คำนวณโอกาสติดเชื้อ
+				if dist <= spreadRadius then
 					local tier = target:GetAttribute("Tier") or 1
 					local tierData = Constants.TIERS[tier] or Constants.TIERS[1]
 					local immune = tierData.ImmuneStrength
 
-					-- สูตรคำนวณโอกาส: โอกาสพื้นฐาน - (Immune / 10)
-					local effectiveChance = math.clamp(Constants.INFECTION.BASE_SPREAD_CHANCE - (immune / 10), 5, 100)
+					local effectiveChance = math.clamp(baseChance - immune, 5, 100)
 					
 					if math.random(1, 100) <= effectiveChance then
 						InfectionEngine.InfectNPC(target, infectedBy)

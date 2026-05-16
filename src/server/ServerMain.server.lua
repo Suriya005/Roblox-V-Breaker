@@ -20,4 +20,13 @@ InfectionEngine.Init()
 local NPCSpawner = require(Server:WaitForChild("services"):WaitForChild("NPCSpawner"))
 NPCSpawner.Init()
 
+local MutationService = require(Server:WaitForChild("services"):WaitForChild("MutationService"))
+MutationService.Init()
+
+local GovernmentAI = require(Server:WaitForChild("services"):WaitForChild("GovernmentAI"))
+GovernmentAI.Init()
+
+local BossManager = require(Server:WaitForChild("services"):WaitForChild("BossManager"))
+BossManager.Init()
+
 print("[ServerMain] ✅ ระบบ Server ทำงานสมบูรณ์!")
