@@ -79,6 +79,11 @@ function MainHUD.Init()
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Parent = mainPanel
 
+	local titleStroke = Instance.new("UIStroke")
+	titleStroke.Color = Color3.fromRGB(0, 0, 0)
+	titleStroke.Thickness = 1
+	titleStroke.Parent = titleLabel
+
 	-- 4. ป้าย Bio Points
 	bioLabel = Instance.new("TextLabel")
 	bioLabel.Name = "BioLabel"
@@ -92,6 +97,11 @@ function MainHUD.Init()
 	bioLabel.BackgroundTransparency = 1
 	bioLabel.Parent = mainPanel
 
+	local bioStroke = Instance.new("UIStroke")
+	bioStroke.Color = Color3.fromRGB(0, 0, 0)
+	bioStroke.Thickness = 1.2
+	bioStroke.Parent = bioLabel
+
 	-- 5. ป้าย DNA Points
 	dnaLabel = Instance.new("TextLabel")
 	dnaLabel.Name = "DnaLabel"
@@ -104,6 +114,11 @@ function MainHUD.Init()
 	dnaLabel.TextXAlignment = Enum.TextXAlignment.Left
 	dnaLabel.BackgroundTransparency = 1
 	dnaLabel.Parent = mainPanel
+
+	local dnaStroke = Instance.new("UIStroke")
+	dnaStroke.Color = Color3.fromRGB(0, 0, 0)
+	dnaStroke.Thickness = 1.2
+	dnaStroke.Parent = dnaLabel
 
 	-- 6. หลอด Progress Bar สู่ DNA ถัดไป
 	local progressBg = Instance.new("Frame")
@@ -139,6 +154,11 @@ function MainHUD.Init()
 	progressText.BackgroundTransparency = 1
 	progressText.Parent = progressBg
 
+	local pTextStroke = Instance.new("UIStroke")
+	pTextStroke.Color = Color3.fromRGB(0, 0, 0)
+	pTextStroke.Thickness = 1
+	pTextStroke.Parent = progressText
+
 	-- 7. ป้ายแจ้งเตือนคำแนะนำ (Tip / Notification - Top Center)
 	tipLabel = Instance.new("TextLabel")
 	tipLabel.Size = UDim2.new(0, 400, 0, 40)
@@ -156,10 +176,21 @@ function MainHUD.Init()
 	tipCorner.CornerRadius = UDim.new(0, 8)
 	tipCorner.Parent = tipLabel
 
-	local tipStroke = Instance.new("UIStroke")
-	tipStroke.Color = Color3.fromRGB(255, 255, 100)
-	tipStroke.Thickness = 1.5
-	tipStroke.Parent = tipLabel
+	-- เส้นขอบกล่องข้อความ (Border)
+	local tipBorder = Instance.new("UIStroke")
+	tipBorder.Name = "BorderStroke"
+	tipBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	tipBorder.Color = Color3.fromRGB(255, 255, 100)
+	tipBorder.Thickness = 1.5
+	tipBorder.Parent = tipLabel
+
+	-- เส้นขอบตัวหนังสือ (Text Outline เพื่อความคมชัด)
+	local tipTextStroke = Instance.new("UIStroke")
+	tipTextStroke.Name = "TextStroke"
+	tipTextStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	tipTextStroke.Color = Color3.fromRGB(0, 0, 0)
+	tipTextStroke.Thickness = 1.2
+	tipTextStroke.Parent = tipLabel
 
 	print("[MainHUD] ✅ สร้าง Main HUD สมบูรณ์!")
 end
@@ -196,7 +227,11 @@ function MainHUD.ShowNotification(message: string, notifType: string)
 	
 	local isWarning = notifType == "Warning"
 	tipLabel.TextColor3 = isWarning and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100)
-	tipLabel.UIStroke.Color = isWarning and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100)
+	
+	local border = tipLabel:FindFirstChild("BorderStroke")
+	if border then
+		border.Color = isWarning and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100)
+	end
 
 	-- เขย่าป้ายเตือนเบาๆ
 	local startPos = tipLabel.Position
@@ -206,7 +241,7 @@ function MainHUD.ShowNotification(message: string, notifType: string)
 	task.wait(2.5)
 	tipLabel.Text = "🎯 คลิกซ้ายที่เป้าหมายเพื่อปล่อยไวรัสระบาด!"
 	tipLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
-	tipLabel.UIStroke.Color = Color3.fromRGB(255, 255, 100)
+	if border then border.Color = Color3.fromRGB(255, 255, 100) end
 end
 
 function MainHUD.ShowPopup(text: string, pos: Vector3, popupType: string)
@@ -232,6 +267,12 @@ function MainHUD.ShowPopup(text: string, pos: Vector3, popupType: string)
 		label.BackgroundTransparency = 1
 		label.Rotation = math.random(-12, 12) -- หมุนเล็กน้อยเพื่อความสะใจ
 		label.Parent = billboard
+		
+		local popStroke = Instance.new("UIStroke")
+		popStroke.Color = Color3.fromRGB(0, 0, 0)
+		popStroke.Thickness = 1.5
+		popStroke.Parent = label
+		
 		billboard.Parent = pgui
 
 		-- อนิเมชันลอยขึ้นและจางหาย
@@ -253,6 +294,11 @@ function MainHUD.ShowPopup(text: string, pos: Vector3, popupType: string)
 		screenPopup.TextSize = 48
 		screenPopup.BackgroundTransparency = 1
 		screenPopup.Parent = screenGui
+
+		local popStroke = Instance.new("UIStroke")
+		popStroke.Color = Color3.fromRGB(0, 0, 0)
+		popStroke.Thickness = 2
+		popStroke.Parent = screenPopup
 
 		local tween = TweenService:Create(screenPopup, TweenInfo.new(1.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, 0.25, 0), TextTransparency = 1, TextSize = 64})
 		tween:Play()
