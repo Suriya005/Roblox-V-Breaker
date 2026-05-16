@@ -72,3 +72,26 @@
 - พัฒนาระบบ **Client UI & Visuals** (ปรับแต่งหน้าต่าง Main HUD, เพิ่มระบบ Screen Shake และเสียงเอฟเฟกต์) เพื่อปิดจบ Phase 1
 
 ---
+
+## 📅 [2026-05-16] — Main HUD & Visual Juice (Phase 1 Complete)
+**สถานะปัจจุบัน:** Phase 1 (เสร็จสมบูรณ์ 100%) ➡️ กำลังเข้าสู่ Phase 2
+
+### ภารกิจที่ทำสำเร็จ (Completed Work):
+1. **พัฒนาระบบ `MainHUD.lua` (Premium UI Module):**
+   - **Glassmorphism Design:** ออกแบบหน้าต่างแผงควบคุมด้านล่างด้วยพื้นหลังกึ่งโปร่งแสง พร้อมกรอบ `UIStroke` สีเขียวเรืองแสงและเงาสะท้อน (Glow Effect) สไตล์พรีเมียม
+   - **Juice & Micro-animations:** เพิ่มอนิเมชันขยายตัวอักษรและเด้งกลับ (TweenService) ทุกครั้งที่ Bio Points หรือ DNA Points มีการเปลี่ยนแปลง
+   - **Progress Bar:** เพิ่มหลอดความคืบหน้าสะสม Bio Points สู่การรับ DNA Point ถาวร (แสดงตัวเลขชัดเจน เช่น `34 / 50`)
+   - **Notification & Tip Bar:** ป้ายแจ้งเตือนด้านบนจอพร้อมระบบเขย่า (UI Shake) เมื่อเกิดข้อผิดพลาด (เช่น ไวรัสติดคูลดาวน์)
+   - **Floating Pop-ups:** ระบบตัวเลขลอยขึ้นจากเป้าหมายที่ติดเชื้อ (เช่น `+1 Bio`) พร้อมสุ่มองศาเอียงเล็กน้อยเพื่อเพิ่ม Game Feel
+2. **ปรับปรุง `ClientMain.client.lua`:**
+   - ปรับโครงสร้างสคริปต์ให้สะอาดและเรียกใช้ `MainHUD` เป็น Module
+   - เชื่อมต่อระบบ Particle Emitter สีเขียวเรืองแสงเวลาเกิดการระบาด (`INFECTION_SPREAD`)
+3. **Commit Git:**
+   - บันทึกประวัติ Git ทั้งหมดของ Phase 1 ลง Repository สำเร็จ
+
+### แผนงานถัดไป (Next Steps):
+- เริ่มต้นพัฒนา **Phase 2: Alpha (Mutation & AI)**
+  - สร้างระบบสายต้นไม้กลายพันธุ์ (`MutationTree.lua`) และร้านค้า Mutation Shop
+  - สร้างระบบ AI รัฐบาล (`GovernmentAI.lua`) และระดับการเตือนภัย Threat Level
+
+---
