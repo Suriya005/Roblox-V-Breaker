@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "skills": {
+    "game-designer": {
+      "source": "opusgamelabs/game-creator",
+      "sourceType": "github",
+      "skillPath": "skills/game-designer/SKILL.md",
+      "computedHash": "428491168b0dfcb32eb58e71b76ffbc7988a3558d5c2a554c90ef3d0e9ddb993"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "9e1c8b3103f92fa8092568a44fe64858de7c5c9dc65ce4bea8f168080e889cfd"
+    },
+    "lua": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "lua/SKILL.md",
+      "computedHash": "3aa1a9185269f09ea88b02ba98ead854cbe2e6214f64714b6100f57799fa7b1a"
+    },
+    "mcp-builder": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/mcp-builder/SKILL.md",
+      "computedHash": "6498a736a8dc5c645047c8a875b8ea7417e2ad97146f005200e50d20a9337ada"
+    },
+    "roblox-animations": {
+      "source": "sentinelcore/roblox-skills",
+      "sourceType": "github",
+      "skillPath": "roblox-animations/SKILL.md",
+      "computedHash": "66b027e98b5f5c67aed452aea94e2a58967334b04b3476fc1cfc390ca251f982"
+    },
+    "roblox-datastores": {
+      "source": "sentinelcore/roblox-skills",
+      "sourceType": "github",
+      "skillPath": "roblox-datastores/SKILL.md",
+      "computedHash": "5ad150156ca626bdb0769d73a731c6a64bb8884414fe82709b0e157839593676"
+    },
+    "roblox-game-development": {
+      "source": "greedychipmunk/agent-skills",
+      "sourceType": "github",
+      "skillPath": "roblox-game-developer/SKILL.md",
+      "computedHash": "b16788a78d99027cf822da31d4e71e380d511a50dc3835d8481849075d5ec04a"
+    },
+    "roblox-gui": {
+      "source": "sentinelcore/roblox-skills",
+      "sourceType": "github",
+      "skillPath": "roblox-gui/SKILL.md",
+      "computedHash": "e50a649d3f6b1d60b393031118e2739ab697756e44d4a5442a26e53e996584c9"
+    },
+    "roblox-performance": {
+      "source": "sentinelcore/roblox-skills",
+      "sourceType": "github",
+      "skillPath": "roblox-performance/SKILL.md",
+      "computedHash": "79126906a98171e7cc2c9847c5aaa208afb61c4cab14b45cb1a97aebc98c5c0f"
+    },
+    "roblox-security": {
+      "source": "sentinelcore/roblox-skills",
+      "sourceType": "github",
+      "skillPath": "roblox-security/SKILL.md",
+      "computedHash": "2581018cf2a0b71f3382065c5d353ef80ae6c81c44dd5bb63a848bd5990f5c6a"
+    }
+  }
+}

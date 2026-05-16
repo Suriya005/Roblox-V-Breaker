@@ -1,0 +1,5 @@
+print('[ClientMain] Started')
+local RS = game:GetService('ReplicatedStorage')
+local RM = require(RS:WaitForChild('Shared'):WaitForChild('network'):WaitForChild('RemoteManager'))
+RM.Init()
+print('Client OK')
