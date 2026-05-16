@@ -1,5 +1,5 @@
--- SurvivalRoleRoulette | RemoteManager (Shared)
--- ReplicatedStorage/Shared/RemoteManager.lua
+-- V-Breaker | RemoteManager (Shared)
+-- ReplicatedStorage/Shared/network/RemoteManager.lua
 -- จัดการสร้างและเข้าถึง RemoteEvents/RemoteFunctions แบบรวมศูนย์
 
 local RunService = game:GetService("RunService")
