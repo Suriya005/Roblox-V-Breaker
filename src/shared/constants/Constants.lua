@@ -28,10 +28,9 @@ Constants.TIERS = {
 -- TIER 1 ANIMAL TYPES & AI CONFIG
 -- ============================================================
 Constants.ANIMALS = {
-	RAT = { Name = "Rat", Speed = 18, Immune = 5, BioPoints = 1, SpawnWeight = 50, Color = Color3.fromRGB(120, 120, 120), Size = Vector3.new(2, 1.2, 3), CanFly = false },
-	BIRD = { Name = "Bird", Speed = 22, Immune = 8, BioPoints = 2, SpawnWeight = 25, Color = Color3.fromRGB(100, 180, 240), Size = Vector3.new(2, 1, 2), CanFly = true },
-	PIG = { Name = "Pig", Speed = 12, Immune = 15, BioPoints = 3, SpawnWeight = 15, Color = Color3.fromRGB(255, 180, 200), Size = Vector3.new(3, 2.5, 4), CanFly = false },
-	MONKEY = { Name = "Monkey", Speed = 20, Immune = 12, BioPoints = 2, SpawnWeight = 10, Color = Color3.fromRGB(139, 69, 19), Size = Vector3.new(2.5, 3, 2.5), CanFly = false },
+	RAT = { Name = "Rat", Speed = 18, Immune = 5, BioPoints = 1, SpawnWeight = 60, Color = Color3.fromRGB(120, 120, 120), Size = Vector3.new(2, 1.2, 3), CanFly = false },
+	PIG = { Name = "Pig", Speed = 12, Immune = 15, BioPoints = 3, SpawnWeight = 25, Color = Color3.fromRGB(255, 180, 200), Size = Vector3.new(3, 2.5, 4), CanFly = false },
+	MONKEY = { Name = "Monkey", Speed = 20, Immune = 12, BioPoints = 2, SpawnWeight = 15, Color = Color3.fromRGB(139, 69, 19), Size = Vector3.new(2.5, 3, 2.5), CanFly = false },
 }
 
 -- ============================================================

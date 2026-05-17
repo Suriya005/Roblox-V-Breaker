@@ -543,14 +543,35 @@ function MainHUD.UpdateDna(dna: number)
 	tween:Play()
 end
 
+MainHUD.HasPunched = false
+
+function MainHUD.HideTip()
+	if not tipLabel then return end
+	MainHUD.HasPunched = true
+	local tween = TweenService:Create(tipLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 1, BackgroundTransparency = 1})
+	tween:Play()
+	local border = tipLabel:FindFirstChild("BorderStroke")
+	if border then TweenService:Create(border, TweenInfo.new(0.5), {Transparency = 1}):Play() end
+	local textStroke = tipLabel:FindFirstChild("TextStroke")
+	if textStroke then TweenService:Create(textStroke, TweenInfo.new(0.5), {Transparency = 1}):Play() end
+end
+
 function MainHUD.ShowNotification(message: string, notifType: string)
 	if not tipLabel then return end
+	
+	-- ปรากฏตัวหนังสือขึ้นมาใหม่เผื่อโดนซ่อนไปแล้ว
+	tipLabel.TextTransparency = 0
+	tipLabel.BackgroundTransparency = 0.5
+	local border = tipLabel:FindFirstChild("BorderStroke")
+	if border then border.Transparency = 0 end
+	local textStroke = tipLabel:FindFirstChild("TextStroke")
+	if textStroke then textStroke.Transparency = 0 end
+
 	tipLabel.Text = message
 	
 	local isWarning = notifType == "Warning"
 	tipLabel.TextColor3 = isWarning and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100)
 	
-	local border = tipLabel:FindFirstChild("BorderStroke")
 	if border then
 		border.Color = isWarning and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100)
 	end
@@ -561,9 +582,14 @@ function MainHUD.ShowNotification(message: string, notifType: string)
 	shakeTween:Play()
 
 	task.wait(2.5)
-	tipLabel.Text = "🎯 คลิกซ้ายที่เป้าหมายเพื่อปล่อยไวรัสระบาด!"
-	tipLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
-	if border then border.Color = Color3.fromRGB(255, 255, 100) end
+	
+	if MainHUD.HasPunched then
+		MainHUD.HideTip()
+	else
+		tipLabel.Text = "🎯 คลิกซ้ายที่เป้าหมายเพื่อปล่อยไวรัสระบาด!"
+		tipLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+		if border then border.Color = Color3.fromRGB(255, 255, 100) end
+	end
 end
 
 function MainHUD.ShowPopup(text: string, pos: Vector3, popupType: string)
@@ -675,6 +701,11 @@ function MainHUD.HideBossBar(name: string)
 	MainHUD.ShowPopup("👑 BOSS DEFEATED: " .. string.upper(name) .. "!", nil, "DNA")
 end
 
+function MainHUD.HideBossBarSilent()
+	if not bossPanel then return end
+	bossPanel.Visible = false
+end
+
 function MainHUD.UpdatePrestige(level: number, multiplier: number, tokens: number)
 	if not curPrestigeLabel then return end
 	curPrestigeLabel.Text = "Current Prestige: Level " .. level
@@ -699,24 +730,25 @@ function MainHUD.ShowCombo(comboCount: number)
 	end
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(0, 500, 0, 120)
-	label.AnchorPoint = Vector2.new(0.5, 0.5)
-	label.Position = UDim2.new(0.5, math.random(-50, 50), 0.35, math.random(-30, 30))
+	label.Size = UDim2.new(0, 300, 0, 60)
+	label.AnchorPoint = Vector2.new(0, 1) -- มุมซ้ายล่าง
+	label.Position = UDim2.new(0, 40 + math.random(-10, 10), 1, -160 + math.random(-10, 10))
 	label.Text = "🔥 COMBO x" .. comboCount .. "!!!"
 	label.TextColor3 = comboColor
 	label.Font = Enum.Font.GothamBold
-	label.TextSize = 140
-	label.Rotation = math.random(-15, 15)
+	label.TextSize = 80 -- เริ่มต้นเล็กลงจากเดิม (จาก 140 เป็น 80)
+	label.Rotation = math.random(-10, 0) -- เอียงซ้ายนิดๆ
+	label.TextXAlignment = Enum.TextXAlignment.Left -- ชิดข้อความไปทางซ้าย
 	label.BackgroundTransparency = 1
 	label.Parent = screenGui
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.fromRGB(0, 0, 0)
-	stroke.Thickness = 4
+	stroke.Thickness = 3
 	stroke.Parent = label
 
-	-- อนิเมชันกระแทกหน้าจอ
-	local tween = TweenService:Create(label, TweenInfo.new(0.3, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {TextSize = 72})
+	-- อนิเมชันกระแทกหน้าจอ (เล็กลงไปที่ 48)
+	local tween = TweenService:Create(label, TweenInfo.new(0.2, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {TextSize = 48})
 	tween:Play()
 
 	task.delay(1.2, function()

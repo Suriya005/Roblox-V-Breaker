@@ -12,8 +12,29 @@ local NPCSpawner = {}
 
 local MAX_ANIMALS = 25
 local MAX_HUMANS = 15
-local EMOJIS = { Rat = "🐭", Bird = "🐦", Pig = "🐷", Monkey = "🐵", Citizen = "🧍", Scientist = "👨‍🔬", Police = "👮" }
+local EMOJIS = { Rat = "🐭", Pig = "🐷", Monkey = "🐵", Citizen = "🧍", Scientist = "👨‍🔬", Police = "👮" }
 local INFECTED_EMOJIS = { Citizen = "😱", Scientist = "🤢", Police = "🧟" }
+
+function NPCSpawner.GetZoneLimits(spawnArea: Part)
+	local minZ = math.floor(spawnArea.Position.Z - (spawnArea.Size.Z / 2) + 10)
+	local maxZ = math.floor(spawnArea.Position.Z + (spawnArea.Size.Z / 2) - 10)
+
+	local minX, maxX
+	if spawnArea.Name == "ForestZone_SpawnArea" then
+		minX, maxX = -40, 45
+	elseif spawnArea.Name == "CityZone_SpawnArea" then
+		minX, maxX = 65, 155
+	elseif spawnArea.Name == "MilitaryBase_SpawnArea" then
+		minX, maxX = 175, 265
+	elseif spawnArea.Name == "VoughtHQ_SpawnArea" then
+		minX, maxX = 285, 375
+	else
+		minX = math.floor(spawnArea.Position.X - (spawnArea.Size.X / 2) + 10)
+		maxX = math.floor(spawnArea.Position.X + (spawnArea.Size.X / 2) - 10)
+	end
+
+	return minX, maxX, minZ, maxZ
+end
 
 function NPCSpawner.Init()
 	print("[NPCSpawner] 🚀 เริ่มต้นระบบ NPC Spawner (Tier 1 & Tier 2)...")
@@ -133,9 +154,7 @@ function NPCSpawner.StartSpawnerLoop(spawnArea: Part, citySpawnArea: Part, milit
 
 				if roll <= Constants.ANIMALS.RAT.SpawnWeight then
 					animalData = Constants.ANIMALS.RAT
-				elseif roll <= Constants.ANIMALS.RAT.SpawnWeight + Constants.ANIMALS.BIRD.SpawnWeight then
-					animalData = Constants.ANIMALS.BIRD
-				elseif roll <= Constants.ANIMALS.RAT.SpawnWeight + Constants.ANIMALS.BIRD.SpawnWeight + Constants.ANIMALS.PIG.SpawnWeight then
+				elseif roll <= Constants.ANIMALS.RAT.SpawnWeight + Constants.ANIMALS.PIG.SpawnWeight then
 					animalData = Constants.ANIMALS.PIG
 				else
 					animalData = Constants.ANIMALS.MONKEY
@@ -195,28 +214,66 @@ function NPCSpawner.StartSpawnerLoop(spawnArea: Part, citySpawnArea: Part, milit
 end
 
 function NPCSpawner.SpawnAnimal(animalData: table, spawnArea: Part, npcsFolder: Folder)
-	local model = Instance.new("Model")
-	model.Name = animalData.Name .. "_" .. math.random(1000, 9999)
+	local petsFolder = workspace:FindFirstChild("Animals/Pets")
+	local templateName = "Bunny"
+	if animalData.Name == "Pig" then templateName = "Pig"
+	elseif animalData.Name == "Monkey" then templateName = "Dog"
+	end
+
+	local templateModel = petsFolder and petsFolder:FindFirstChild(templateName)
+	local model
+	local rootPart
+
+	if templateModel then
+		model = templateModel:Clone()
+		model.Name = animalData.Name .. "_" .. math.random(1000, 9999)
+		
+		local mainPart = model:FindFirstChild(templateName) or model:FindFirstChildWhichIsA("BasePart")
+		
+		rootPart = Instance.new("Part")
+		rootPart.Name = "HumanoidRootPart"
+		rootPart.Size = mainPart and mainPart.Size or animalData.Size
+		rootPart.CFrame = mainPart and mainPart.CFrame or CFrame.new()
+		rootPart.Transparency = 1
+		rootPart.Anchored = true
+		rootPart.CanCollide = false
+		rootPart.Parent = model
+
+		model.PrimaryPart = rootPart
+
+		for _, child in ipairs(model:GetChildren()) do
+			if child:IsA("BasePart") and child ~= rootPart then
+				child.Anchored = false
+				child.CanCollide = false
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = rootPart
+				weld.Part1 = child
+				weld.Parent = rootPart
+			end
+		end
+	else
+		model = Instance.new("Model")
+		model.Name = animalData.Name .. "_" .. math.random(1000, 9999)
+		rootPart = Instance.new("Part")
+		rootPart.Name = "HumanoidRootPart"
+		rootPart.Size = animalData.Size
+		rootPart.Anchored = true
+		rootPart.CanCollide = false
+		rootPart.Color = animalData.Color
+		rootPart.Material = Enum.Material.SmoothPlastic
+		rootPart.Parent = model
+		model.PrimaryPart = rootPart
+	end
+
 	model:SetAttribute("Tier", 1)
 	model:SetAttribute("ImmuneStrength", animalData.Immune)
 	model:SetAttribute("BioPoints", animalData.BioPoints)
 	model:SetAttribute("AnimalType", animalData.Name)
 	model:SetAttribute("IsInfected", false)
-	model:SetAttribute("Health", 100) -- เลือดเริ่มต้น 100
+	model:SetAttribute("Health", 100)
 	model:SetAttribute("MaxHealth", 100)
 
 	CollectionService:AddTag(model, "NPC")
-
-	local rootPart = Instance.new("Part")
-	rootPart.Name = "HumanoidRootPart"
-	rootPart.Size = animalData.Size
-	rootPart.Anchored = true
-	rootPart.CanCollide = false -- ป้องกัน Physics Lag
-	rootPart.Color = animalData.Color
-	rootPart.Material = Enum.Material.SmoothPlastic
-	rootPart.Parent = model
-
-	model.PrimaryPart = rootPart
 
 	-- สร้าง BillboardGui ด้านบนหัว (Emoji + Status + Health Bar)
 	local bg = Instance.new("BillboardGui")
@@ -273,19 +330,17 @@ function NPCSpawner.SpawnAnimal(animalData: table, spawnArea: Part, npcsFolder: 
 
 	bg.Parent = rootPart
 
-	-- คำนวณตำแหน่งเริ่มต้น
-	local halfX = spawnArea.Size.X / 2
-	local halfZ = spawnArea.Size.Z / 2
-	local randX = spawnArea.Position.X + math.random(-halfX + 10, halfX - 10)
-	local randZ = spawnArea.Position.Z + math.random(-halfZ + 10, halfZ - 10)
+	local minX, maxX, minZ, maxZ = NPCSpawner.GetZoneLimits(spawnArea)
+	local randX = math.random(minX, maxX)
+	local randZ = math.random(minZ, maxZ)
 	local spawnY = spawnArea.Position.Y + spawnArea.Size.Y / 2 + animalData.Size.Y / 2
 
 	if animalData.CanFly then
 		spawnY += math.random(12, 25)
 	end
 
-	rootPart.CFrame = CFrame.new(randX, spawnY, randZ)
 	model.Parent = npcsFolder
+	model:PivotTo(CFrame.new(randX, spawnY, randZ))
 
 	-- เริ่ม AI Loop
 	task.spawn(function()
@@ -296,9 +351,7 @@ end
 function NPCSpawner.AnimalAILoop(model: Model, animalData: table, spawnArea: Part)
 	local rootPart = model.PrimaryPart
 	local label = rootPart:WaitForChild("VBreaker_Emoji"):WaitForChild("EmojiLabel")
-
-	local halfX = spawnArea.Size.X / 2
-	local halfZ = spawnArea.Size.Z / 2
+	local minX, maxX, minZ, maxZ = NPCSpawner.GetZoneLimits(spawnArea)
 
 	while model.Parent and rootPart and rootPart.Parent do
 		local isInfected = model:GetAttribute("IsInfected")
@@ -339,8 +392,8 @@ function NPCSpawner.AnimalAILoop(model: Model, animalData: table, spawnArea: Par
 		local fixedGroundY = spawnArea.Position.Y + spawnArea.Size.Y / 2 + animalData.Size.Y / 2
 
 		if targetPos == Vector3.zero then
-			local randX = spawnArea.Position.X + math.random(-halfX + 10, halfX - 10)
-			local randZ = spawnArea.Position.Z + math.random(-halfZ + 10, halfZ - 10)
+			local randX = math.random(minX, maxX)
+			local randZ = math.random(minZ, maxZ)
 			local targetY = fixedGroundY
 
 			if animalData.CanFly then
@@ -349,8 +402,8 @@ function NPCSpawner.AnimalAILoop(model: Model, animalData: table, spawnArea: Par
 
 			targetPos = Vector3.new(randX, targetY, randZ)
 		else
-			local clampX = math.clamp(targetPos.X, spawnArea.Position.X - halfX + 10, spawnArea.Position.X + halfX - 10)
-			local clampZ = math.clamp(targetPos.Z, spawnArea.Position.Z - halfZ + 10, spawnArea.Position.Z + halfZ - 10)
+			local clampX = math.clamp(targetPos.X, minX, maxX)
+			local clampZ = math.clamp(targetPos.Z, minZ, maxZ)
 			local targetY = animalData.CanFly and targetPos.Y or fixedGroundY
 			targetPos = Vector3.new(clampX, targetY, clampZ)
 		end
@@ -363,9 +416,28 @@ function NPCSpawner.AnimalAILoop(model: Model, animalData: table, spawnArea: Par
 			local lookPos = animalData.CanFly and targetPos or Vector3.new(targetPos.X, fixedGroundY, targetPos.Z)
 			local goalCFrame = CFrame.new(targetPos, targetPos + (lookPos - rootPart.Position))
 
-			local tween = TweenService:Create(rootPart, TweenInfo.new(travelTime, Enum.EasingStyle.Linear), {CFrame = goalCFrame})
-			tween:Play()
-			task.wait(travelTime)
+			local startTime = os.clock()
+			local startCFrame = rootPart.CFrame
+			local animSpeed = animalData.CanFly and 6 or 14 -- บินกระพือช้าๆ วิ่งกระโดดเร็วๆ
+			local bobHeight = animalData.CanFly and 0.4 or 1.2
+			local tiltAngle = math.rad(12)
+
+			local elapsed = 0
+			while elapsed < travelTime and model.Parent and rootPart.Parent do
+				elapsed = os.clock() - startTime
+				local alpha = math.clamp(elapsed / travelTime, 0, 1)
+				local baseCFrame = startCFrame:Lerp(goalCFrame, alpha)
+				
+				local bob = math.abs(math.sin(elapsed * animSpeed)) * bobHeight
+				local tilt = math.sin(elapsed * animSpeed) * tiltAngle
+				
+				rootPart.CFrame = baseCFrame * CFrame.new(0, bob, 0) * CFrame.Angles(0, 0, tilt)
+				task.wait()
+			end
+
+			if model.Parent and rootPart.Parent then
+				rootPart.CFrame = goalCFrame
+			end
 		end
 
 		task.wait(math.random(1, 3))
@@ -450,14 +522,13 @@ function NPCSpawner.SpawnHuman(humanData: table, spawnArea: Part, npcsFolder: Fo
 
 	bg.Parent = rootPart
 
-	local halfX = spawnArea.Size.X / 2
-	local halfZ = spawnArea.Size.Z / 2
-	local randX = spawnArea.Position.X + math.random(-halfX + 10, halfX - 10)
-	local randZ = spawnArea.Position.Z + math.random(-halfZ + 10, halfZ - 10)
+	local minX, maxX, minZ, maxZ = NPCSpawner.GetZoneLimits(spawnArea)
+	local randX = math.random(minX, maxX)
+	local randZ = math.random(minZ, maxZ)
 	local spawnY = spawnArea.Position.Y + spawnArea.Size.Y / 2 + humanData.Size.Y / 2
 
-	rootPart.CFrame = CFrame.new(randX, spawnY, randZ)
 	model.Parent = npcsFolder
+	model:PivotTo(CFrame.new(randX, spawnY, randZ))
 
 	task.spawn(function()
 		NPCSpawner.HumanAILoop(model, humanData, spawnArea)
@@ -467,9 +538,7 @@ end
 function NPCSpawner.HumanAILoop(model: Model, humanData: table, spawnArea: Part)
 	local rootPart = model.PrimaryPart
 	local label = rootPart:WaitForChild("VBreaker_Emoji"):WaitForChild("EmojiLabel")
-
-	local halfX = spawnArea.Size.X / 2
-	local halfZ = spawnArea.Size.Z / 2
+	local minX, maxX, minZ, maxZ = NPCSpawner.GetZoneLimits(spawnArea)
 
 	while model.Parent and rootPart and rootPart.Parent do
 		local isInfected = model:GetAttribute("IsInfected")
@@ -498,25 +567,21 @@ function NPCSpawner.HumanAILoop(model: Model, humanData: table, spawnArea: Part)
 
 		local fixedGroundY = spawnArea.Position.Y + spawnArea.Size.Y / 2 + humanData.Size.Y / 2
 
-		-- AI พฤติกรรมมนุษย์ (Thematic Identity)
 		if humanData.Name == "Police" then
 			if not isInfected and nearestInfected then
-				-- ตำรวจวิ่งเข้าหาคนติดเชื้อเพื่อควบคุมสถานการณ์ (ล็อกแกน Y ให้อยู่ติดพื้นเสมอ)
 				local flatSelf = Vector3.new(rootPart.Position.X, fixedGroundY, rootPart.Position.Z)
 				local flatTarget = Vector3.new(nearestInfected.Position.X, fixedGroundY, nearestInfected.Position.Z)
 				local dirTowards = (flatTarget - flatSelf).Unit
 				targetPos = flatSelf + dirTowards * 15
 			elseif isInfected then
-				-- ตำรวจติดเชื้อกลายเป็นซอมบี้ เดินลาดตระเวนช้าๆ
-				local randX = spawnArea.Position.X + math.random(-halfX + 10, halfX - 10)
-				local randZ = spawnArea.Position.Z + math.random(-halfZ + 10, halfZ - 10)
+				local randX = math.random(minX, maxX)
+				local randZ = math.random(minZ, maxZ)
 				targetPos = Vector3.new(randX, fixedGroundY, randZ)
 			end
 		else
-			-- Citizen & Scientist: วิ่งหนีเมื่อเจอคนติดเชื้อ หรือวิ่งพล่านตอนตัวเองติดเชื้อ
 			if isInfected then
-				local randX = spawnArea.Position.X + math.random(-halfX + 10, halfX - 10)
-				local randZ = spawnArea.Position.Z + math.random(-halfZ + 10, halfZ - 10)
+				local randX = math.random(minX, maxX)
+				local randZ = math.random(minZ, maxZ)
 				targetPos = Vector3.new(randX, fixedGroundY, randZ)
 			elseif not isInfected and nearestInfected then
 				local flatSelf = Vector3.new(rootPart.Position.X, fixedGroundY, rootPart.Position.Z)
@@ -527,23 +592,23 @@ function NPCSpawner.HumanAILoop(model: Model, humanData: table, spawnArea: Part)
 		end
 
 		if targetPos == Vector3.zero then
-			local randX = spawnArea.Position.X + math.random(-halfX + 10, halfX - 10)
-			local randZ = spawnArea.Position.Z + math.random(-halfZ + 10, halfZ - 10)
+			local randX = math.random(minX, maxX)
+			local randZ = math.random(minZ, maxZ)
 			targetPos = Vector3.new(randX, fixedGroundY, randZ)
 		else
-			local clampX = math.clamp(targetPos.X, spawnArea.Position.X - halfX + 10, spawnArea.Position.X + halfX - 10)
-			local clampZ = math.clamp(targetPos.Z, spawnArea.Position.Z - halfZ + 10, spawnArea.Position.Z + halfZ - 10)
+			local clampX = math.clamp(targetPos.X, minX, maxX)
+			local clampZ = math.clamp(targetPos.Z, minZ, maxZ)
 			targetPos = Vector3.new(clampX, fixedGroundY, clampZ)
 		end
 
 		local dist = (targetPos - rootPart.Position).Magnitude
 		local speedMultiplier = 1
 		if humanData.Name == "Police" and isInfected then
-			speedMultiplier = 0.6 -- ซอมบี้ตำรวจเดินช้า
+			speedMultiplier = 0.6
 		elseif humanData.Name == "Police" and not isInfected and nearestInfected then
-			speedMultiplier = 1.3 -- ตำรวจวิ่งเข้าชาร์จ
+			speedMultiplier = 1.3
 		elseif isInfected or nearestInfected then
-			speedMultiplier = 1.5 -- ชาวบ้าน/นักวิทยาศาสตร์วิ่งหนีสุดชีวิต
+			speedMultiplier = 1.5
 		end
 
 		local speed = humanData.Speed * speedMultiplier
@@ -557,9 +622,29 @@ function NPCSpawner.HumanAILoop(model: Model, humanData: table, spawnArea: Part)
 				flatLookDir = rootPart.CFrame.LookVector
 			end
 			local goalCFrame = CFrame.new(targetPos, targetPos + flatLookDir)
-			local tween = TweenService:Create(rootPart, TweenInfo.new(travelTime, Enum.EasingStyle.Linear), {CFrame = goalCFrame})
-			tween:Play()
-			task.wait(travelTime)
+
+			local startTime = os.clock()
+			local startCFrame = rootPart.CFrame
+			local animSpeed = 12
+			local bobHeight = 1.0
+			local tiltAngle = math.rad(10)
+
+			local elapsed = 0
+			while elapsed < travelTime and model.Parent and rootPart.Parent do
+				elapsed = os.clock() - startTime
+				local alpha = math.clamp(elapsed / travelTime, 0, 1)
+				local baseCFrame = startCFrame:Lerp(goalCFrame, alpha)
+				
+				local bob = math.abs(math.sin(elapsed * animSpeed)) * bobHeight
+				local tilt = math.sin(elapsed * animSpeed) * tiltAngle
+				
+				rootPart.CFrame = baseCFrame * CFrame.new(0, bob, 0) * CFrame.Angles(0, 0, tilt)
+				task.wait()
+			end
+
+			if model.Parent and rootPart.Parent then
+				rootPart.CFrame = goalCFrame
+			end
 		end
 
 		task.wait(math.random(1, 3))
@@ -643,14 +728,13 @@ function NPCSpawner.SpawnMilitary(milData: table, spawnArea: Part, npcsFolder: F
 
 	bg.Parent = rootPart
 
-	local halfX = spawnArea.Size.X / 2
-	local halfZ = spawnArea.Size.Z / 2
-	local randX = spawnArea.Position.X + math.random(-halfX + 10, halfX - 10)
-	local randZ = spawnArea.Position.Z + math.random(-halfZ + 10, halfZ - 10)
+	local minX, maxX, minZ, maxZ = NPCSpawner.GetZoneLimits(spawnArea)
+	local randX = math.random(minX, maxX)
+	local randZ = math.random(minZ, maxZ)
 	local spawnY = spawnArea.Position.Y + spawnArea.Size.Y / 2 + milData.Size.Y / 2
 
-	rootPart.CFrame = CFrame.new(randX, spawnY, randZ)
 	model.Parent = npcsFolder
+	model:PivotTo(CFrame.new(randX, spawnY, randZ))
 
 	task.spawn(function()
 		NPCSpawner.MilitaryAILoop(model, milData, spawnArea)
@@ -734,18 +818,17 @@ function NPCSpawner.SpawnSupe(supeData: table, spawnArea: Part, npcsFolder: Fold
 
 	bg.Parent = rootPart
 
-	local halfX = spawnArea.Size.X / 2
-	local halfZ = spawnArea.Size.Z / 2
-	local randX = spawnArea.Position.X + math.random(-halfX + 10, halfX - 10)
-	local randZ = spawnArea.Position.Z + math.random(-halfZ + 10, halfZ - 10)
+	local minX, maxX, minZ, maxZ = NPCSpawner.GetZoneLimits(spawnArea)
+	local randX = math.random(minX, maxX)
+	local randZ = math.random(minZ, maxZ)
 	local spawnY = spawnArea.Position.Y + spawnArea.Size.Y / 2 + supeData.Size.Y / 2
 
 	if supeData.CanFly then
 		spawnY += math.random(15, 30)
 	end
 
-	rootPart.CFrame = CFrame.new(randX, spawnY, randZ)
 	model.Parent = npcsFolder
+	model:PivotTo(CFrame.new(randX, spawnY, randZ))
 
 	task.spawn(function()
 		NPCSpawner.SupeAILoop(model, supeData, spawnArea, supeData.CanFly, spawnY)
@@ -755,18 +838,16 @@ end
 function NPCSpawner.MilitaryAILoop(model: Model, milData: table, spawnArea: Part)
 	local rootPart = model.PrimaryPart
 	local label = rootPart:WaitForChild("VBreaker_Emoji"):WaitForChild("EmojiLabel")
-	local halfX = spawnArea.Size.X / 2
-	local halfZ = spawnArea.Size.Z / 2
+	local minX, maxX, minZ, maxZ = NPCSpawner.GetZoneLimits(spawnArea)
 	local fixedGroundY = spawnArea.Position.Y + spawnArea.Size.Y / 2 + milData.Size.Y / 2
 
 	while model.Parent and rootPart and rootPart.Parent do
 		local isInfected = model:GetAttribute("IsInfected")
 		label.Text = isInfected and "🧟" or (milData.Name == "Soldier" and "🪖" or "🛡️")
 
-		local targetPos = Vector3.zero
-		local randX = spawnArea.Position.X + math.random(-halfX + 10, halfX - 10)
-		local randZ = spawnArea.Position.Z + math.random(-halfZ + 10, halfZ - 10)
-		targetPos = Vector3.new(randX, fixedGroundY, randZ)
+		local randX = math.random(minX, maxX)
+		local randZ = math.random(minZ, maxZ)
+		local targetPos = Vector3.new(randX, fixedGroundY, randZ)
 
 		local dist = (targetPos - rootPart.Position).Magnitude
 		local speed = milData.Speed * (isInfected and 0.6 or 1.0)
@@ -776,9 +857,29 @@ function NPCSpawner.MilitaryAILoop(model: Model, milData: table, spawnArea: Part
 			local flatLookDir = Vector3.new(targetPos.X - rootPart.Position.X, 0, targetPos.Z - rootPart.Position.Z)
 			if flatLookDir.Magnitude > 0 then flatLookDir = flatLookDir.Unit else flatLookDir = rootPart.CFrame.LookVector end
 			local goalCFrame = CFrame.new(targetPos, targetPos + flatLookDir)
-			local tween = TweenService:Create(rootPart, TweenInfo.new(travelTime, Enum.EasingStyle.Linear), {CFrame = goalCFrame})
-			tween:Play()
-			task.wait(travelTime)
+
+			local startTime = os.clock()
+			local startCFrame = rootPart.CFrame
+			local animSpeed = milData.Name == "Tank" and 8 or 12 -- รถถังขยับหนักแน่น ทหารวิ่งกระฉับกระเฉง
+			local bobHeight = milData.Name == "Tank" and 0.5 or 1.0
+			local tiltAngle = math.rad(milData.Name == "Tank" and 5 or 10)
+
+			local elapsed = 0
+			while elapsed < travelTime and model.Parent and rootPart.Parent do
+				elapsed = os.clock() - startTime
+				local alpha = math.clamp(elapsed / travelTime, 0, 1)
+				local baseCFrame = startCFrame:Lerp(goalCFrame, alpha)
+				
+				local bob = math.abs(math.sin(elapsed * animSpeed)) * bobHeight
+				local tilt = math.sin(elapsed * animSpeed) * tiltAngle
+				
+				rootPart.CFrame = baseCFrame * CFrame.new(0, bob, 0) * CFrame.Angles(0, 0, tilt)
+				task.wait()
+			end
+
+			if model.Parent and rootPart.Parent then
+				rootPart.CFrame = goalCFrame
+			end
 		end
 		task.wait(math.random(1, 3))
 	end
@@ -787,18 +888,16 @@ end
 function NPCSpawner.SupeAILoop(model: Model, supeData: table, spawnArea: Part, canFly: boolean, spawnY: number)
 	local rootPart = model.PrimaryPart
 	local label = rootPart:WaitForChild("VBreaker_Emoji"):WaitForChild("EmojiLabel")
-	local halfX = spawnArea.Size.X / 2
-	local halfZ = spawnArea.Size.Z / 2
+	local minX, maxX, minZ, maxZ = NPCSpawner.GetZoneLimits(spawnArea)
 
 	while model.Parent and rootPart and rootPart.Parent do
 		local isInfected = model:GetAttribute("IsInfected")
 		label.Text = isInfected and "🤢" or (supeData.Name == "Elite" and "🦹" or "🦸")
 
-		local targetPos = Vector3.zero
-		local randX = spawnArea.Position.X + math.random(-halfX + 10, halfX - 10)
-		local randZ = spawnArea.Position.Z + math.random(-halfZ + 10, halfZ - 10)
+		local randX = math.random(minX, maxX)
+		local randZ = math.random(minZ, maxZ)
 		local targetY = canFly and (spawnArea.Position.Y + spawnArea.Size.Y / 2 + supeData.Size.Y / 2 + math.random(15, 30)) or spawnY
-		targetPos = Vector3.new(randX, targetY, randZ)
+		local targetPos = Vector3.new(randX, targetY, randZ)
 
 		local dist = (targetPos - rootPart.Position).Magnitude
 		local speed = supeData.Speed * (isInfected and 0.5 or 1.0)
@@ -808,9 +907,29 @@ function NPCSpawner.SupeAILoop(model: Model, supeData: table, spawnArea: Part, c
 			local flatLookDir = Vector3.new(targetPos.X - rootPart.Position.X, 0, targetPos.Z - rootPart.Position.Z)
 			if flatLookDir.Magnitude > 0 then flatLookDir = flatLookDir.Unit else flatLookDir = rootPart.CFrame.LookVector end
 			local goalCFrame = CFrame.new(targetPos, targetPos + flatLookDir)
-			local tween = TweenService:Create(rootPart, TweenInfo.new(travelTime, Enum.EasingStyle.Linear), {CFrame = goalCFrame})
-			tween:Play()
-			task.wait(travelTime)
+
+			local startTime = os.clock()
+			local startCFrame = rootPart.CFrame
+			local animSpeed = canFly and 6 or 12
+			local bobHeight = canFly and 0.4 or 1.0
+			local tiltAngle = math.rad(canFly and 8 or 10)
+
+			local elapsed = 0
+			while elapsed < travelTime and model.Parent and rootPart.Parent do
+				elapsed = os.clock() - startTime
+				local alpha = math.clamp(elapsed / travelTime, 0, 1)
+				local baseCFrame = startCFrame:Lerp(goalCFrame, alpha)
+				
+				local bob = math.abs(math.sin(elapsed * animSpeed)) * bobHeight
+				local tilt = math.sin(elapsed * animSpeed) * tiltAngle
+				
+				rootPart.CFrame = baseCFrame * CFrame.new(0, bob, 0) * CFrame.Angles(0, 0, tilt)
+				task.wait()
+			end
+
+			if model.Parent and rootPart.Parent then
+				rootPart.CFrame = goalCFrame
+			end
 		end
 		task.wait(math.random(1, 3))
 	end

@@ -153,8 +153,8 @@ function BossManager.SpawnBoss(bossData: table, spawnArea: Part)
 
 	BossManager.ActiveBoss = model
 
-	-- ส่ง Event แจ้งเตือน Client ทุกคนว่าบอสเกิดแล้ว (เพื่อโชว์ Boss Health Bar หรือข้อความเตือนภัย)
-	RemoteManager.FireAllClients(Constants.REMOTES.BOSS_SPAWNED, bossData.Name, bossData.Health, bossData.Health, bossData.Color)
+	-- ส่ง Event แจ้งเตือน Client ทุกคนว่าบอสเกิดแล้ว พร้อมส่ง Model ไปด้วยเพื่อเช็คระยะ
+	RemoteManager.FireAllClients(Constants.REMOTES.BOSS_SPAWNED, model, bossData.Name, bossData.Health, bossData.Health, bossData.Color)
 
 	-- เริ่ม Boss AI Loop
 	task.spawn(function()
