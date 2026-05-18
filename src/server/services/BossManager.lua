@@ -10,57 +10,102 @@ local Constants = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild(
 local RemoteManager = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("network"):WaitForChild("RemoteManager"))
 
 local BossManager = {}
-BossManager.ActiveBoss = nil
-
--- ลำดับของบอสที่จะสุ่มเกิด
-local BOSS_ORDER = {
-	Constants.BOSSES.THUNDERCLAP,
-	Constants.BOSSES.INFERNO,
-	Constants.BOSSES.VORTEX,
-	Constants.BOSSES.SUPREME,
+BossManager.ActiveBosses = {
+	Forest = nil,
+	City = nil,
+	Military = nil,
+	Vought = nil,
 }
 
-local currentBossIndex = 1
+BossManager.BOSS_CONFIGS = {
+	Forest = Constants.BOSSES.THUNDERCLAP,
+	City = Constants.BOSSES.INFERNO,
+	Military = Constants.BOSSES.VORTEX,
+	Vought = Constants.BOSSES.SUPREME,
+}
 
 function BossManager.Init()
-	print("[BossManager] ⚔️ เริ่มต้นระบบ Boss Manager...")
+	print("[BossManager] ⚔️ เริ่มต้นระบบ Boss Manager (เกิดแยก 4 โซน)...")
 
 	-- เริ่มลูปเช็คและสุ่มเกิดบอสประจำโซน
 	task.spawn(BossManager.StartBossLoop)
+	-- เริ่มลูปซิงค์ข้อมูลบอสให้ผู้เล่นตามโซนที่เขายืนอยู่
+	task.spawn(BossManager.StartClientSyncLoop)
 
 	print("[BossManager] ✅ พร้อมใช้งาน!")
 end
 
 function BossManager.StartBossLoop()
+	local PlayerService = require(script.Parent:WaitForChild("PlayerService"))
+
 	while true do
-		task.wait(30) -- เช็คทุกๆ 30 วินาที
+		task.wait(30) -- เช็คการเกิดของบอสทุกๆ 30 วินาที
 
-		-- ถ้ายังไม่มีบอสในฉาก ให้ทำการสุ่มเกิดบอสตัวถัดไปตามลำดับโซน
-		if not BossManager.ActiveBoss or not BossManager.ActiveBoss.Parent then
-			local bossData = BOSS_ORDER[currentBossIndex]
-			if bossData then
-				-- ตรวจสอบว่า Zone ของบอสนั้นปลดล็อกหรือยัง
-				local PlayerService = require(script.Parent:WaitForChild("PlayerService"))
-				if not PlayerService.IsZoneUnlocked(bossData.Zone) then
-					-- ถ้าโซนยังไม่ปลดล็อก ให้วนกลับไปเกิดบอสตัวแรก (Thunderclap) แทน
-					currentBossIndex = 1
-					bossData = BOSS_ORDER[1]
-				end
+		for zoneKey, bossData in pairs(BossManager.BOSS_CONFIGS) do
+			-- ตรวจสอบว่าโซนนั้นปลดล็อกหรือยัง (Forest ปลดล็อกตั้งแต่เริ่ม)
+			local isUnlocked = (zoneKey == "Forest") or PlayerService.IsZoneUnlocked(bossData.Zone)
 
-				-- เลือกพื้นที่เกิดตาม Zone
-				local spawnAreaName = (bossData.Zone == "Forest" and "ForestZone_SpawnArea" or bossData.Zone == "City" and "CityZone_SpawnArea" or bossData.Zone == "Military" and "MilitaryBase_SpawnArea" or "VoughtHQ_SpawnArea")
-				local spawnArea = workspace:FindFirstChild(spawnAreaName) or workspace:FindFirstChild("ForestZone_SpawnArea")
+			if isUnlocked then
+				-- ถ้ายังไม่มีบอสในโซนนั้น ให้ทำการสุ่มเกิด
+				if not BossManager.ActiveBosses[zoneKey] or not BossManager.ActiveBosses[zoneKey].Parent then
+					local spawnAreaName = (zoneKey == "Forest" and "ForestZone_SpawnArea" or zoneKey == "City" and "CityZone_SpawnArea" or zoneKey == "Military" and "MilitaryBase_SpawnArea" or "VoughtHQ_SpawnArea")
+					local spawnArea = workspace:FindFirstChild(spawnAreaName)
 
-				if spawnArea then
-					BossManager.SpawnBoss(bossData, spawnArea)
+					if spawnArea then
+						BossManager.SpawnBoss(zoneKey, bossData, spawnArea)
+					end
 				end
 			end
 		end
 	end
 end
 
-function BossManager.SpawnBoss(bossData: table, spawnArea: Part)
-	print("[BossManager] 👑 บอสปรากฏตัว: " .. bossData.Name .. " (" .. bossData.Zone .. " Zone)")
+function BossManager.StartClientSyncLoop()
+	local lastZoneMap = {} -- บันทึกโซนล่าสุดของผู้เล่นแต่ละคน
+
+	while true do
+		task.wait(0.5)
+
+		for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
+			local char = plr.Character
+			local root = char and (char.PrimaryPart or char:FindFirstChild("HumanoidRootPart"))
+			if root then
+				local x = root.Position.X
+				local currentZone = "Forest"
+				if x < 55 then currentZone = "Forest"
+				elseif x < 165 then currentZone = "City"
+				elseif x < 275 then currentZone = "Military"
+				else currentZone = "Vought" end
+
+				local myBoss = BossManager.ActiveBosses[currentZone]
+				local oldZone = lastZoneMap[plr]
+
+				-- ถ้าผู้เล่นเปลี่ยนโซน หรือเพิ่งเข้ามา
+				if currentZone ~= oldZone then
+					lastZoneMap[plr] = currentZone
+					if myBoss and myBoss.Parent then
+						local bossData = BossManager.BOSS_CONFIGS[currentZone]
+						local curHp = myBoss:GetAttribute("Health") or bossData.Health
+						local maxHp = myBoss:GetAttribute("MaxHealth") or bossData.Health
+						RemoteManager.FireClient(Constants.REMOTES.BOSS_SPAWNED, plr, myBoss, bossData.Name, curHp, maxHp, bossData.Color)
+					else
+						RemoteManager.FireClient(Constants.REMOTES.BOSS_DEFEATED, plr, "CLEAR_ZONE_BOSS")
+					end
+				else
+					-- ถ้าอยู่โซนเดิมและมีบอส ให้ซิงค์เลือด
+					if myBoss and myBoss.Parent then
+						local curHp = myBoss:GetAttribute("Health") or 1000
+						local maxHp = myBoss:GetAttribute("MaxHealth") or 1000
+						RemoteManager.FireClient(Constants.REMOTES.BOSS_HEALTH_CHANGED, plr, curHp, maxHp)
+					end
+				end
+			end
+		end
+	end
+end
+
+function BossManager.SpawnBoss(zoneKey: string, bossData: table, spawnArea: Part)
+	print("[BossManager] 👑 บอสประจำโซนปรากฏตัว: " .. bossData.Name .. " (" .. zoneKey .. " Zone)")
 
 	local model = Instance.new("Model")
 	model.Name = "BOSS_" .. bossData.Name
@@ -82,7 +127,7 @@ function BossManager.SpawnBoss(bossData: table, spawnArea: Part)
 	rootPart.Anchored = true
 	rootPart.CanCollide = false
 	rootPart.Color = bossData.Color
-	rootPart.Material = Enum.Material.Neon -- บอสเรืองแสงดูอลังการ
+	rootPart.Material = Enum.Material.Neon
 	rootPart.Parent = model
 
 	model.PrimaryPart = rootPart
@@ -97,17 +142,24 @@ function BossManager.SpawnBoss(bossData: table, spawnArea: Part)
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"
 	label.Size = UDim2.new(1, 0, 0, 55)
-	label.Text = bossData.Emoji or "👑"
-	label.TextSize = 50
+	label.Text = bossData.Name
+	label.TextSize = 36
+	label.Font = Enum.Font.GothamBold
+	label.TextColor3 = Color3.fromRGB(255, 215, 0)
 	label.BackgroundTransparency = 1
 	label.Parent = bg
+
+	local nameStroke = Instance.new("UIStroke")
+	nameStroke.Color = Color3.fromRGB(0, 0, 0)
+	nameStroke.Thickness = 2
+	nameStroke.Parent = label
 
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "StatusLabel"
 	statusLabel.Size = UDim2.new(1, 0, 0, 25)
 	statusLabel.Position = UDim2.new(0, 0, 0, 60)
-	statusLabel.Text = "👑 " .. bossData.Name .. " | 🛡️ " .. bossData.Immune .. " | HP: " .. bossData.Health
-	statusLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
+	statusLabel.Text = "🛡️ " .. bossData.Immune .. " | HP: " .. bossData.Health
+	statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	statusLabel.Font = Enum.Font.GothamBold
 	statusLabel.TextSize = 16
 	statusLabel.BackgroundTransparency = 1
@@ -132,7 +184,7 @@ function BossManager.SpawnBoss(bossData: table, spawnArea: Part)
 	local healthFill = Instance.new("Frame")
 	healthFill.Name = "HealthFill"
 	healthFill.Size = UDim2.new(1, 0, 1, 0)
-	healthFill.BackgroundColor3 = Color3.fromRGB(255, 50, 50) -- บอสหลอดเลือดแดงเดือด
+	healthFill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
 	healthFill.Parent = healthBg
 
 	local hCorner2 = Instance.new("UICorner")
@@ -151,18 +203,33 @@ function BossManager.SpawnBoss(bossData: table, spawnArea: Part)
 	rootPart.CFrame = CFrame.new(randX, spawnY, randZ)
 	model.Parent = workspace
 
-	BossManager.ActiveBoss = model
+	BossManager.ActiveBosses[zoneKey] = model
 
-	-- ส่ง Event แจ้งเตือน Client ทุกคนว่าบอสเกิดแล้ว พร้อมส่ง Model ไปด้วยเพื่อเช็คระยะ
-	RemoteManager.FireAllClients(Constants.REMOTES.BOSS_SPAWNED, model, bossData.Name, bossData.Health, bossData.Health, bossData.Color)
+	-- ส่ง Event แจ้งเตือน Client ทุกคนที่อยู่ในโซนนั้นว่าบอสเกิดแล้ว
+	for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
+		local char = plr.Character
+		local root = char and (char.PrimaryPart or char:FindFirstChild("HumanoidRootPart"))
+		if root then
+			local x = root.Position.X
+			local pZone = "Forest"
+			if x < 55 then pZone = "Forest"
+			elseif x < 165 then pZone = "City"
+			elseif x < 275 then pZone = "Military"
+			else pZone = "Vought" end
+
+			if pZone == zoneKey then
+				RemoteManager.FireClient(Constants.REMOTES.BOSS_SPAWNED, plr, model, bossData.Name, bossData.Health, bossData.Health, bossData.Color)
+			end
+		end
+	end
 
 	-- เริ่ม Boss AI Loop
 	task.spawn(function()
-		BossManager.BossAILoop(model, bossData, spawnArea)
+		BossManager.BossAILoop(zoneKey, model, bossData, spawnArea)
 	end)
 end
 
-function BossManager.BossAILoop(model: Model, bossData: table, spawnArea: Part)
+function BossManager.BossAILoop(zoneKey: string, model: Model, bossData: table, spawnArea: Part)
 	local rootPart = model.PrimaryPart
 	local label = rootPart:WaitForChild("VBreaker_Emoji"):WaitForChild("EmojiLabel")
 	local statusLabel = rootPart:WaitForChild("VBreaker_Emoji"):WaitForChild("StatusLabel")
@@ -175,9 +242,10 @@ function BossManager.BossAILoop(model: Model, bossData: table, spawnArea: Part)
 		local isInfected = model:GetAttribute("IsInfected")
 		local hp = model:GetAttribute("Health") or bossData.Health
 
-		label.Text = isInfected and "🤢" or (bossData.Emoji or "👑")
+		label.Text = isInfected and ("Infected " .. bossData.Name) or bossData.Name
+		label.TextColor3 = isInfected and Color3.fromRGB(150, 255, 150) or Color3.fromRGB(255, 215, 0)
 
-		-- AI บอส: เดินลาดตระเวนอย่างสง่างาม หรือพุ่งเข้าหาเป้าหมาย
+		-- AI บอส: เดินลาดตระเวนอย่างสง่างาม
 		local targetPos = Vector3.zero
 		local randX = spawnArea.Position.X + math.random(-halfX + 20, halfX - 20)
 		local randZ = spawnArea.Position.Z + math.random(-halfZ + 20, halfZ - 20)
@@ -189,21 +257,16 @@ function BossManager.BossAILoop(model: Model, bossData: table, spawnArea: Part)
 
 		if travelTime > 0 then
 			local flatLookDir = Vector3.new(targetPos.X - rootPart.Position.X, 0, targetPos.Z - rootPart.Position.Z)
-			if flatLookDir.Magnitude > 0 then
-				flatLookDir = flatLookDir.Unit
-			else
-				flatLookDir = rootPart.CFrame.LookVector
-			end
+			if flatLookDir.Magnitude > 0 then flatLookDir = flatLookDir.Unit else flatLookDir = rootPart.CFrame.LookVector end
 			local goalCFrame = CFrame.new(targetPos, targetPos + flatLookDir)
 			local tween = TweenService:Create(rootPart, TweenInfo.new(travelTime, Enum.EasingStyle.Linear), {CFrame = goalCFrame})
 			tween:Play()
 			task.wait(travelTime)
 		end
 
-		-- บอสใช้สกิลพิเศษ (Ability Spectacle)
+		-- บอสใช้สกิลพิเศษ
 		if model.Parent and rootPart and not isInfected then
 			print("[BossManager] ⚡ บอส " .. bossData.Name .. " ใช้สกิล: " .. bossData.Ability)
-			-- เล่นเอฟเฟกต์สกิลบอส (เช่น ปล่อยสายฟ้า หรือระเบิดไฟรอบตัว)
 			local pe = Instance.new("ParticleEmitter")
 			pe.Texture = "rbxassetid://243660364"
 			pe.Color = ColorSequence.new(bossData.Color)
@@ -219,13 +282,28 @@ function BossManager.BossAILoop(model: Model, bossData: table, spawnArea: Part)
 		task.wait(math.random(2, 4))
 	end
 
-	-- เมื่อบอสถูกกำจัด ให้สลับไปบอสตัวถัดไป
-	if BossManager.ActiveBoss == model then
-		BossManager.ActiveBoss = nil
-		print("[BossManager] 💀 บอส " .. bossData.Name .. " ถูกกำจัดแล้ว!")
-		RemoteManager.FireAllClients(Constants.REMOTES.BOSS_DEFEATED, bossData.Name)
+	-- เมื่อบอสถูกกำจัด
+	if BossManager.ActiveBosses[zoneKey] == model then
+		BossManager.ActiveBosses[zoneKey] = nil
+		print("[BossManager] 💀 บอสประจำโซน " .. bossData.Name .. " ถูกกำจัดแล้ว!")
+		
+		-- แจ้งเตือน Client ทุกคนที่อยู่ในโซนนั้นว่าบอสถูกกำจัด
+		for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
+			local char = plr.Character
+			local root = char and (char.PrimaryPart or char:FindFirstChild("HumanoidRootPart"))
+			if root then
+				local x = root.Position.X
+				local pZone = "Forest"
+				if x < 55 then pZone = "Forest"
+				elseif x < 165 then pZone = "City"
+				elseif x < 275 then pZone = "Military"
+				else pZone = "Vought" end
 
-		currentBossIndex = (currentBossIndex % #BOSS_ORDER) + 1
+				if pZone == zoneKey then
+					RemoteManager.FireClient(Constants.REMOTES.BOSS_DEFEATED, plr, bossData.Name)
+				end
+			end
+		end
 	end
 end
 

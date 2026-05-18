@@ -12,8 +12,6 @@ local NPCSpawner = {}
 
 local MAX_ANIMALS = 25
 local MAX_HUMANS = 15
-local EMOJIS = { Rat = "🐭", Pig = "🐷", Monkey = "🐵", Citizen = "🧍", Scientist = "👨‍🔬", Police = "👮" }
-local INFECTED_EMOJIS = { Citizen = "😱", Scientist = "🤢", Police = "🧟" }
 
 function NPCSpawner.GetZoneLimits(spawnArea: Part)
 	local minZ = math.floor(spawnArea.Position.Z - (spawnArea.Size.Z / 2) + 10)
@@ -285,10 +283,17 @@ function NPCSpawner.SpawnAnimal(animalData: table, spawnArea: Part, npcsFolder: 
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"
 	label.Size = UDim2.new(1, 0, 0, 40)
-	label.Text = EMOJIS[animalData.Name] or "🐾"
-	label.TextSize = 36
+	label.Text = animalData.Name
+	label.TextSize = 28
+	label.Font = Enum.Font.GothamBold
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
 	label.BackgroundTransparency = 1
 	label.Parent = bg
+
+	local nameStroke = Instance.new("UIStroke")
+	nameStroke.Color = Color3.fromRGB(0, 0, 0)
+	nameStroke.Thickness = 1.5
+	nameStroke.Parent = label
 
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "StatusLabel"
@@ -356,7 +361,8 @@ function NPCSpawner.AnimalAILoop(model: Model, animalData: table, spawnArea: Par
 	while model.Parent and rootPart and rootPart.Parent do
 		local isInfected = model:GetAttribute("IsInfected")
 		
-		label.Text = isInfected and "🤢" or (EMOJIS[animalData.Name] or "🐾")
+		label.Text = isInfected and ("Infected " .. animalData.Name) or animalData.Name
+		label.TextColor3 = isInfected and Color3.fromRGB(150, 255, 150) or Color3.fromRGB(255, 255, 255)
 
 		local targetPos = Vector3.zero
 
@@ -478,10 +484,17 @@ function NPCSpawner.SpawnHuman(humanData: table, spawnArea: Part, npcsFolder: Fo
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"
 	label.Size = UDim2.new(1, 0, 0, 45)
-	label.Text = EMOJIS[humanData.Name] or "🧍"
-	label.TextSize = 40
+	label.Text = humanData.Name
+	label.TextSize = 28
+	label.Font = Enum.Font.GothamBold
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
 	label.BackgroundTransparency = 1
 	label.Parent = bg
+
+	local nameStroke = Instance.new("UIStroke")
+	nameStroke.Color = Color3.fromRGB(0, 0, 0)
+	nameStroke.Thickness = 1.5
+	nameStroke.Parent = label
 
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "StatusLabel"
@@ -543,7 +556,8 @@ function NPCSpawner.HumanAILoop(model: Model, humanData: table, spawnArea: Part)
 	while model.Parent and rootPart and rootPart.Parent do
 		local isInfected = model:GetAttribute("IsInfected")
 		
-		label.Text = isInfected and (INFECTED_EMOJIS[humanData.Name] or "😱") or (EMOJIS[humanData.Name] or "🧍")
+		label.Text = isInfected and ("Infected " .. humanData.Name) or humanData.Name
+		label.TextColor3 = isInfected and Color3.fromRGB(150, 255, 150) or Color3.fromRGB(255, 255, 255)
 
 		local targetPos = Vector3.zero
 		local npcsFolder = workspace:FindFirstChild("NPCs")
@@ -684,10 +698,17 @@ function NPCSpawner.SpawnMilitary(milData: table, spawnArea: Part, npcsFolder: F
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"
 	label.Size = UDim2.new(1, 0, 0, 45)
-	label.Text = (milData.Name == "Soldier" and "🪖" or "🛡️")
-	label.TextSize = 40
+	label.Text = milData.Name
+	label.TextSize = 28
+	label.Font = Enum.Font.GothamBold
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
 	label.BackgroundTransparency = 1
 	label.Parent = bg
+
+	local nameStroke = Instance.new("UIStroke")
+	nameStroke.Color = Color3.fromRGB(0, 0, 0)
+	nameStroke.Thickness = 1.5
+	nameStroke.Parent = label
 
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "StatusLabel"
@@ -774,10 +795,17 @@ function NPCSpawner.SpawnSupe(supeData: table, spawnArea: Part, npcsFolder: Fold
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"
 	label.Size = UDim2.new(1, 0, 0, 45)
-	label.Text = (supeData.Name == "Elite" and "🦹" or "🦸")
-	label.TextSize = 40
+	label.Text = supeData.Name
+	label.TextSize = 28
+	label.Font = Enum.Font.GothamBold
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
 	label.BackgroundTransparency = 1
 	label.Parent = bg
+
+	local nameStroke = Instance.new("UIStroke")
+	nameStroke.Color = Color3.fromRGB(0, 0, 0)
+	nameStroke.Thickness = 1.5
+	nameStroke.Parent = label
 
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "StatusLabel"
@@ -843,7 +871,8 @@ function NPCSpawner.MilitaryAILoop(model: Model, milData: table, spawnArea: Part
 
 	while model.Parent and rootPart and rootPart.Parent do
 		local isInfected = model:GetAttribute("IsInfected")
-		label.Text = isInfected and "🧟" or (milData.Name == "Soldier" and "🪖" or "🛡️")
+		label.Text = isInfected and ("Infected " .. milData.Name) or milData.Name
+		label.TextColor3 = isInfected and Color3.fromRGB(150, 255, 150) or Color3.fromRGB(255, 255, 255)
 
 		local randX = math.random(minX, maxX)
 		local randZ = math.random(minZ, maxZ)
@@ -892,7 +921,8 @@ function NPCSpawner.SupeAILoop(model: Model, supeData: table, spawnArea: Part, c
 
 	while model.Parent and rootPart and rootPart.Parent do
 		local isInfected = model:GetAttribute("IsInfected")
-		label.Text = isInfected and "🤢" or (supeData.Name == "Elite" and "🦹" or "🦸")
+		label.Text = isInfected and ("Infected " .. supeData.Name) or supeData.Name
+		label.TextColor3 = isInfected and Color3.fromRGB(150, 255, 150) or Color3.fromRGB(255, 255, 255)
 
 		local randX = math.random(minX, maxX)
 		local randZ = math.random(minZ, maxZ)

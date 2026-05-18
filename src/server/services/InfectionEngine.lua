@@ -136,7 +136,7 @@ function InfectionEngine.InfectNPC(targetNpc: Model, infectedByUserId: number)
 
 	-- เปลี่ยนสี Part เป็นสีเขียวเรืองแสง (Toxic Green)
 	for _, part in ipairs(targetNpc:GetDescendants()) do
-		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "AirborneRing" then
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
 			part.Color = Color3.fromRGB(50, 220, 50)
 			part.Material = Enum.Material.Neon
 		end
@@ -146,29 +146,6 @@ function InfectionEngine.InfectNPC(targetNpc: Model, infectedByUserId: number)
 	local spreadRadius = player and MutationService.GetSpreadRadius(player) or Constants.INFECTION.BASE_SPREAD_RADIUS
 	local baseChance = player and MutationService.GetSpreadChance(player) or Constants.INFECTION.BASE_SPREAD_CHANCE
 
-	-- สร้าง Part วงแหวน Airborne แสดงรัศมีแพร่เชื้อ (Visual Spectacle)
-	if root then
-		local ring = Instance.new("Part")
-		ring.Name = "AirborneRing"
-		ring.Size = Vector3.new(spreadRadius * 2, 0.2, spreadRadius * 2)
-		ring.Anchored = false
-		ring.CanCollide = false
-		ring.Massless = true
-		ring.Color = Color3.fromRGB(50, 255, 100)
-		ring.Material = Enum.Material.Neon
-		ring.Transparency = 0.85
-		
-		local mesh = Instance.new("CylinderMesh")
-		mesh.Parent = ring
-		
-		ring.CFrame = root.CFrame * CFrame.new(0, -root.Size.Y / 2 + 0.1, 0)
-		ring.Parent = targetNpc
-		
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = root
-		weld.Part1 = ring
-		weld.Parent = ring
-	end
 
 	-- เปลี่ยนป้ายหน้าบนหัวเป็นหน้าป่วย และอัปเดตสถานะ Waterborne + Immune
 	if root then
@@ -181,7 +158,11 @@ function InfectionEngine.InfectNPC(targetNpc: Model, infectedByUserId: number)
 
 			local immune = targetNpc:GetAttribute("ImmuneStrength") or 10
 
-			if label then label.Text = "🤢" end
+			local npcName = targetNpc:GetAttribute("AnimalType") or targetNpc:GetAttribute("HumanType") or targetNpc:GetAttribute("MilitaryType") or targetNpc:GetAttribute("SupeType") or targetNpc:GetAttribute("BossType") or "NPC"
+			if label then
+				label.Text = "Infected " .. npcName
+				label.TextColor3 = Color3.fromRGB(150, 255, 150)
+			end
 			if statusLabel then
 				statusLabel.Text = "🛡️ " .. immune .. " | 💧 " .. baseChance .. "% | HP: 100"
 				statusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
@@ -271,11 +252,6 @@ function InfectionEngine.StartLoop()
 			local spreadRadius = player and MutationService.GetSpreadRadius(player) or Constants.INFECTION.BASE_SPREAD_RADIUS
 			local baseChance = player and MutationService.GetSpreadChance(player) or Constants.INFECTION.BASE_SPREAD_CHANCE
 
-			-- อัปเดตขนาดวงแหวน AirborneRing ตามรัศมีปัจจุบันของผู้เล่น (Real-time Upgrade Spectacle)
-			local ring = infected:FindFirstChild("AirborneRing")
-			if ring then
-				ring.Size = Vector3.new(spreadRadius * 2, 0.2, spreadRadius * 2)
-			end
 
 			-- ระบบลดเลือด (Health Drain) ทุกๆ 1 วินาที
 			local lastDamage = infected:GetAttribute("LastDamageTime") or 0
