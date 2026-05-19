@@ -138,6 +138,7 @@ function BossManager.SpawnBoss(zoneKey: string, bossData: table, spawnArea: Part
 	bg.Size = UDim2.new(0, 250, 0, 120)
 	bg.StudsOffset = Vector3.new(0, bossData.Size.Y / 2 + 4, 0)
 	bg.AlwaysOnTop = true
+	bg.MaxDistance = 150
 
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"

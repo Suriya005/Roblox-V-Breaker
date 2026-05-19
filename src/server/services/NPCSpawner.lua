@@ -279,6 +279,7 @@ function NPCSpawner.SpawnAnimal(animalData: table, spawnArea: Part, npcsFolder: 
 	bg.Size = UDim2.new(0, 180, 0, 95)
 	bg.StudsOffset = Vector3.new(0, animalData.Size.Y / 2 + 2.5, 0)
 	bg.AlwaysOnTop = true
+	bg.MaxDistance = 100
 
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"
@@ -480,6 +481,7 @@ function NPCSpawner.SpawnHuman(humanData: table, spawnArea: Part, npcsFolder: Fo
 	bg.Size = UDim2.new(0, 200, 0, 100)
 	bg.StudsOffset = Vector3.new(0, humanData.Size.Y / 2 + 3, 0)
 	bg.AlwaysOnTop = true
+	bg.MaxDistance = 100
 
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"
@@ -694,6 +696,7 @@ function NPCSpawner.SpawnMilitary(milData: table, spawnArea: Part, npcsFolder: F
 	bg.Size = UDim2.new(0, 200, 0, 100)
 	bg.StudsOffset = Vector3.new(0, milData.Size.Y / 2 + 3, 0)
 	bg.AlwaysOnTop = true
+	bg.MaxDistance = 100
 
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"
@@ -791,6 +794,7 @@ function NPCSpawner.SpawnSupe(supeData: table, spawnArea: Part, npcsFolder: Fold
 	bg.Size = UDim2.new(0, 200, 0, 100)
 	bg.StudsOffset = Vector3.new(0, supeData.Size.Y / 2 + 3, 0)
 	bg.AlwaysOnTop = true
+	bg.MaxDistance = 100
 
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"

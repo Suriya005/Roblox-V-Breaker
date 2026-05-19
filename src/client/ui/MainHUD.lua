@@ -9,8 +9,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Constants = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("constants"):WaitForChild("Constants"))
 local RemoteManager = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("network"):WaitForChild("RemoteManager"))
+local SettingsPanel = require(script.Parent:WaitForChild("SettingsPanel"))
 
 local MainHUD = {}
+MainHUD.ActiveComboLabel = nil
+
 local player = Players.LocalPlayer
 
 local screenGui
@@ -598,9 +601,45 @@ function MainHUD.ShowPopup(text: string, pos: Vector3, popupType: string)
 
 	local isDna = popupType == "DNA"
 	local isDamage = popupType == "Damage"
+
+	-- Redirect numeric DNA notifications (+X DNA) to active combo text instead of standalone screen popups
+	if isDna and MainHUD.ActiveComboLabel and MainHUD.ActiveComboLabel.Parent then
+		local dnaAmount = tonumber(string.match(text, "%+(%d+)"))
+		if dnaAmount then
+			local label = MainHUD.ActiveComboLabel
+			local dnaSubLabel = label:FindFirstChild("DnaSubLabel")
+			if not dnaSubLabel then
+				dnaSubLabel = Instance.new("TextLabel")
+				dnaSubLabel.Name = "DnaSubLabel"
+				dnaSubLabel.Size = UDim2.new(1, 0, 0, 30)
+				dnaSubLabel.Position = UDim2.new(0, 5, 1, 0) -- วางด้านล่าง Combo พอดี
+				dnaSubLabel.TextColor3 = Color3.fromRGB(150, 210, 255) -- สีฟ้าอ่อนของ DNA
+				dnaSubLabel.Font = Enum.Font.GothamBold
+				dnaSubLabel.TextSize = 22
+				dnaSubLabel.TextXAlignment = Enum.TextXAlignment.Left
+				dnaSubLabel.BackgroundTransparency = 1
+				dnaSubLabel.Parent = label
+
+				local subStroke = Instance.new("UIStroke")
+				subStroke.Color = Color3.fromRGB(0, 0, 0)
+				subStroke.Thickness = 2
+				subStroke.Parent = dnaSubLabel
+			end
+			
+			dnaSubLabel.Text = "🧬 +" .. dnaAmount .. " DNA"
+			
+			-- Juice animation: pulse scale/size slightly
+			local tween = TweenService:Create(dnaSubLabel, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, true), {TextSize = 28})
+			tween:Play()
+			
+			return -- Skip standalone popup
+		end
+	end
+
 	local color = isDna and Color3.fromRGB(150, 210, 255) or (isDamage and Color3.fromRGB(255, 100, 50) or Color3.fromRGB(50, 255, 50))
 
 	if pos and pos ~= Vector3.zero then
+		if not SettingsPanel.GetSetting("Popups") then return end
 		-- สร้าง BillboardGui ลอยขึ้นจากตำแหน่ง NPC
 		local billboard = Instance.new("BillboardGui")
 		billboard.Size = UDim2.new(0, 180, 0, 60)
@@ -747,14 +786,36 @@ function MainHUD.ShowCombo(comboCount: number)
 	stroke.Thickness = 3
 	stroke.Parent = label
 
+	-- บันทึก Reference ล่าสุดของป้าย Combo
+	MainHUD.ActiveComboLabel = label
+
 	-- อนิเมชันกระแทกหน้าจอ (เล็กลงไปที่ 48)
 	local tween = TweenService:Create(label, TweenInfo.new(0.2, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {TextSize = 48})
 	tween:Play()
 
 	task.delay(1.2, function()
-		local fade = TweenService:Create(label, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1, TextStrokeTransparency = 1})
-		fade:Play()
-		fade.Completed:Connect(function() label:Destroy() end)
+		if label.Parent then
+			local fade = TweenService:Create(label, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1, TextStrokeTransparency = 1})
+			fade:Play()
+
+			local subLabel = label:FindFirstChild("DnaSubLabel")
+			if subLabel then
+				local fadeSub = TweenService:Create(subLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1, TextStrokeTransparency = 1})
+				fadeSub:Play()
+			end
+
+			fade.Completed:Connect(function()
+				if MainHUD.ActiveComboLabel == label then
+					MainHUD.ActiveComboLabel = nil
+				end
+				label:Destroy()
+			end)
+		else
+			if MainHUD.ActiveComboLabel == label then
+				MainHUD.ActiveComboLabel = nil
+			end
+			label:Destroy()
+		end
 	end)
 end
 
@@ -808,7 +869,7 @@ function MainHUD.PlayIntroAnimation()
 
 		-- Screen Shake
 		local cam = workspace.CurrentCamera
-		if cam then
+		if cam and SettingsPanel.GetSetting("ScreenShake") then
 			local origCFrame = cam.CFrame
 			for i = 1, 10 do
 				cam.CFrame = origCFrame * CFrame.new(math.random(-2,2), math.random(-2,2), 0)

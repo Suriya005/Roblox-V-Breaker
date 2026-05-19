@@ -169,6 +169,7 @@ function GovernmentAI.SpawnDoctor(zKey, zData)
 	bg.Size = UDim2.new(0, 200, 0, 100)
 	bg.StudsOffset = Vector3.new(0, 5.5, 0)
 	bg.AlwaysOnTop = true
+	bg.MaxDistance = 100
 
 	local label = Instance.new("TextLabel")
 	label.Name = "EmojiLabel"
